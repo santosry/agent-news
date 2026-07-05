@@ -1,0 +1,26 @@
+Package: agentenews
+Title: Weekly News Curation Agent
+Version: 0.1.0
+Authors@R: c(person("Ryan", "Santos", role = c("aut", "cre"), email = "ryandpaulosantos@gmail.com"))
+Description: Weekly R agent that collects, ranks, summarizes, audits, and emails a curated news clipping.
+License: MIT
+Encoding: UTF-8
+Imports:
+    dplyr,
+    purrr,
+    stringr,
+    stringi,
+    tibble,
+    tidyr,
+    lubridate,
+    jsonlite,
+    rvest,
+    xml2,
+    httr2,
+    gmailr,
+    glue,
+    htmltools,
+    openssl,
+    yaml
+Suggests:
+    testthat

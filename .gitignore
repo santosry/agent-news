@@ -5,8 +5,7 @@
 .Renviron
 
 oauth_client.json
-secrets/*.rds
-secrets/*.json
+secrets/*
 !secrets/.gitkeep
 
 outputs/*

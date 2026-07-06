@@ -56,7 +56,7 @@ render_email_html <- function(news, status_tbl, config) {
     }), collapse = "\n")
   }
 
-  period <- glue::glue("{format(config$window_start, '%d/%m/%Y')} a {format(config$window_end, '%d/%m/%Y')}")
+  period <- glue::glue("{format(config$window_start, '%d/%m/%Y')} a {format(config$window_end, '%d/%m/%Y')} ({config$timezone_label})")
 
   paste0(
     "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'></head>",

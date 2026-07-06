@@ -26,27 +26,34 @@ jobs:
 
     env:
       NEWS_TZ: America/Sao_Paulo
+      NEWS_TIMEZONE_LABEL: Horário de Brasília
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GMAILR_KEY: ${{ secrets.GMAILR_KEY }}
+      GMAILR_TOKEN_ENC_B64: ${{ secrets.GMAILR_TOKEN_ENC_B64 }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+      RENV_PATHS_CACHE: ~/.cache/R/renv
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup R
-        uses: r-lib/actions/setup-r@v2
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
           r-version: 'release'
           use-public-rspm: true
 
-      - name: Install R dependencies
-        uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Cache locked R packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          cache: true
-          extra-packages: |
-            any::testthat
-            any::yaml
+          path: ~/.cache/R/renv
+          key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-renv-
+
+      - name: Restore locked R dependencies
+        run: |
+          Rscript -e "install.packages('renv', repos='https://cloud.r-project.org'); renv::restore(prompt = FALSE)"
 
       - name: Validate R syntax
         run: |
@@ -56,9 +63,22 @@ jobs:
         run: |
           Rscript -e "yaml::read_yaml('.github/workflows/weekly-news.yml'); cat('Workflow YAML OK\n')"
 
+      - name: Validate no secrets are tracked
+        run: |
+          Rscript scripts/validate_no_secrets.R
+
       - name: Run tests
         run: |
           Rscript tests/testthat.R
+
+      - name: Run benchmark smoke
+        env:
+          BENCHMARK_MAX_CANDIDATES_PER_SOURCE: 30
+          BENCHMARK_CNN_MAX_PUBLIC_PAGES: 2
+          BENCHMARK_NEWS_PER_SOURCE: 2
+          BENCHMARK_MAX_SELECTED_NEWS: 8
+        run: |
+          Rscript scripts/benchmark_agent.R
 
       - name: Run weekly agent
         run: |
@@ -66,7 +86,7 @@ jobs:
 
       - name: Upload clipping artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: weekly-news-artifacts
           path: |

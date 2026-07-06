@@ -44,16 +44,33 @@ authenticate_gmail <- function(config) {
     return(invisible(TRUE))
   }
 
+  if (nzchar(config$gmail_token_enc_b64)) {
+    if (!nzchar(config$gmail_key)) {
+      stop("GMAILR_KEY is required to decrypt the Gmail token.", call. = FALSE)
+    }
+    raw_payload <- jsonlite::base64_dec(config$gmail_token_enc_b64)
+    con <- rawConnection(raw_payload, "rb")
+    on.exit(close(con), add = TRUE)
+    payload <- readRDS(con)
+    token <- decrypt_gmail_payload(payload, config$gmail_key)
+    gmailr::gm_auth(token = token)
+    return(invisible(TRUE))
+  }
+
   if (file.exists(config$gmail_encrypted_token_path)) {
     if (!nzchar(config$gmail_key)) {
       stop("GMAILR_KEY is required to decrypt the Gmail token.", call. = FALSE)
     }
     payload <- readRDS(config$gmail_encrypted_token_path)
-    key <- openssl::sha256(charToRaw(config$gmail_key))
-    token <- unserialize(openssl::aes_cbc_decrypt(payload$data, key = key, iv = payload$iv))
+    token <- decrypt_gmail_payload(payload, config$gmail_key)
     gmailr::gm_auth(token = token)
     return(invisible(TRUE))
   }
 
   stop("No Gmail token found. Run setup_gmail_token.R and configure secrets.", call. = FALSE)
+}
+
+decrypt_gmail_payload <- function(payload, key_text) {
+  key <- openssl::sha256(charToRaw(key_text))
+  unserialize(openssl::aes_cbc_decrypt(payload$data, key = key, iv = payload$iv))
 }

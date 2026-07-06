@@ -45,6 +45,7 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
 
   list(
     timezone = tz,
+    timezone_label = Sys.getenv("NEWS_TIMEZONE_LABEL", "Horário de Brasília"),
     now = now_tz,
     window_start = now_tz - lubridate::days(lookback_days),
     window_end = now_tz,
@@ -68,7 +69,8 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
     gmail_token_path = Sys.getenv("GMAIL_TOKEN_PATH", "secrets/gmailr-token.rds"),
     gmail_encrypted_token_path = Sys.getenv("GMAIL_ENCRYPTED_TOKEN_PATH", "secrets/gmailr-token.rds.enc"),
     gmail_oauth_client = Sys.getenv("GMAIL_OAUTH_CLIENT", "oauth_client.json"),
-    gmail_key = Sys.getenv("GMAILR_KEY", "")
+    gmail_key = Sys.getenv("GMAILR_KEY", ""),
+    gmail_token_enc_b64 = Sys.getenv("GMAILR_TOKEN_ENC_B64", "")
   )
 }
 

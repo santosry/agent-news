@@ -27,3 +27,6 @@ if (!is.null(result$html_path)) {
 if (!is.null(result$audit_path)) {
   cat("Audit:", result$audit_path, "\n")
 }
+if (!is.null(result$report_path)) {
+  cat("Run report:", result$report_path, "\n")
+}

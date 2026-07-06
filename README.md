@@ -1,6 +1,6 @@
 # Agente News
 
-Agente semanal em R para curadoria editorial de notícias reais, com coleta pública, validação de datas, deduplicação, ranking por IA, resumo analítico em português do Brasil, envio por Gmail e auditoria mínima da execução.
+Agente semanal em R para curadoria editorial de notícias reais, com coleta pública, validação de datas, deduplicação, ranking por IA, resumo analítico em português do Brasil, envio por Gmail, auditoria da execução e benchmark operacional.
 
 ## Objetivo
 
@@ -27,8 +27,12 @@ Cada fonte tem coletor independente. Falha em uma fonte é registrada e não imp
 - `R/openai.R`, `R/rank.R`, `R/summarize.R`: Responses API, ranking e resumo.
 - `R/render_email.R`: HTML compatível com Gmail.
 - `R/send_email.R`: autenticação e envio Gmail.
-- `R/audit.R`: CSV/JSON de auditoria.
+- `R/audit.R`: CSV/JSON de auditoria e relatório de execução.
+- `R/validate.R`: invariantes de produção antes do envio.
+- `scripts/validate_no_secrets.R`: bloqueio de secrets rastreados ou padrões sensíveis.
+- `scripts/benchmark_agent.R`: benchmark de coleta, ranking heurístico, deduplicação, resumo dry run e renderização.
 - `tests/testthat/`: testes unitários.
+- `renv.lock`: versões travadas das dependências R.
 
 ## Ranking e resumo
 
@@ -47,7 +51,7 @@ Coberturas substantivamente distintas podem permanecer quando a similaridade fic
 
 ## E-mail
 
-O e-mail é HTML, sem JavaScript e com CSS inline. O topo contém a seção `Ryan, leia estas 3`, com as três notícias mais relevantes da semana. Depois, as notícias aparecem agrupadas por:
+O e-mail é HTML, sem JavaScript e com CSS inline. O período é apresentado em Horário de Brasília, implementado tecnicamente como `America/Sao_Paulo`. O topo contém a seção `Ryan, leia estas 3`, com as três notícias mais relevantes da semana. Depois, as notícias aparecem agrupadas por:
 
 1. J3News
 2. Folha1
@@ -69,7 +73,13 @@ Use o R instalado em:
 & "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" --version
 ```
 
-Instale dependências:
+Restaure dependências travadas:
+
+```powershell
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" -e "install.packages('renv', repos='https://cloud.r-project.org'); renv::restore(prompt=FALSE)"
+```
+
+Se precisar reconstruir o ambiente sem `renv`, instale dependências manualmente:
 
 ```powershell
 & "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" -e "install.packages(c('dplyr','purrr','stringr','stringi','tibble','tidyr','lubridate','jsonlite','rvest','xml2','httr2','gmailr','glue','htmltools','openssl','yaml','testthat'), repos='https://cloud.r-project.org')"
@@ -99,7 +109,9 @@ Sem `OPENAI_API_KEY`, o modo `DRY_RUN=true` usa ranking e resumo heurísticos ap
 & "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" setup_gmail_token.R
 ```
 
-O script gera `secrets/gmailr-token.rds` para uso local e, quando `GMAILR_KEY` está definida, `secrets/gmailr-token.rds.enc` para execução não interativa. Nunca commite `oauth_client.json` nem o `.rds` descriptografado.
+O script gera `secrets/gmailr-token.rds` para uso local e, quando `GMAILR_KEY` está definida, `secrets/gmailr-token.rds.enc` e `secrets/gmailr-token.rds.enc.b64.txt`. Nunca commite `oauth_client.json`, tokens ou qualquer arquivo dentro de `secrets/`.
+
+Para GitHub Actions, copie o conteúdo de `secrets/gmailr-token.rds.enc.b64.txt` para o secret `GMAILR_TOKEN_ENC_B64`.
 
 ## GitHub Secrets
 
@@ -107,8 +119,9 @@ Cadastre no repositório:
 
 - `OPENAI_API_KEY`
 - `GMAILR_KEY`
+- `GMAILR_TOKEN_ENC_B64`
 
-Se a execução real for usada no GitHub Actions, inclua também o token criptografado `secrets/gmailr-token.rds.enc` no repositório, gerado com a mesma `GMAILR_KEY`. Não crie valores falsos.
+Não publique `oauth_client.json`, `.Renviron`, tokens ou arquivos em `secrets/`. Não crie valores falsos.
 
 ## Execução local
 
@@ -134,14 +147,37 @@ $env:DRY_RUN="false"
 
 Os testes cobrem normalização, deduplicação, datas, janela de sete dias, encoding, destinatários, top 3, falhas de fonte e renderização HTML. Eles não enviam e-mail.
 
+Valide ausência de secrets rastreados:
+
+```powershell
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" scripts/validate_no_secrets.R
+```
+
+## Benchmark
+
+O benchmark mede coleta, deduplicação, ranking heurístico, seleção, resumo dry run e renderização sem enviar e-mail e sem chamar a OpenAI. Ele não salva conteúdo integral de artigos.
+
+```powershell
+$env:DRY_RUN="true"
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" scripts/benchmark_agent.R
+```
+
+Artifacts gerados:
+
+- `benchmark-*.csv`
+- `benchmark-*.json`
+- HTML dry run de referência
+
 ## GitHub Actions
 
 O workflow está em `.github/workflows/weekly-news.yml`.
 
-- Agendamento: sábado às 08:00 em `America/Sao_Paulo`.
+- Agendamento: sábado às 08:00 no Horário de Brasília (`America/Sao_Paulo`).
 - `workflow_dispatch`: execução manual com opção `dry_run`.
-- Valida sintaxe R, workflow YAML e testes antes do agente.
-- Publica HTML, CSV e JSON em artifacts da execução.
+- Restaura dependências pelo `renv.lock`.
+- Usa GitHub Actions fixadas por SHA de commit.
+- Valida sintaxe R, workflow YAML, ausência de secrets, testes e benchmark antes do agente.
+- Publica HTML, CSV, JSON, auditoria, relatório de execução e benchmark em artifacts da execução.
 - Não faz commit automático dos resultados semanais.
 
 Falhas críticas derrubam o workflow: nenhuma fonte coletada, OpenAI indisponível fora de dry run, schema inválido sem recuperação, Gmail inválido em envio real ou nenhum destinatário com envio bem-sucedido.
@@ -153,6 +189,9 @@ A cada execução são gerados em `outputs/`:
 - `weekly-news-*.html`
 - `news-audit-*.csv`
 - `news-audit-*.json`
+- `news-run-report-*.json`
+- `benchmark-*.csv`
+- `benchmark-*.json`
 
 A auditoria guarda metadados, escore, tema, seleção e motivo básico de descarte. O conteúdo integral dos artigos não é persistido.
 
@@ -168,5 +207,5 @@ A auditoria guarda metadados, escore, tema, seleção e motivo básico de descar
 - `Folha1` com acentos quebrados: confirme se a resposta declara `charset=iso-8859-1`; o coletor converte a partir do charset HTTP/HTML.
 - `BBC News` sem itens: verifique status dos feeds `feeds.bbci.co.uk` e redirects.
 - `CNN Brasil` sem itens antigos: reduza ou aumente `CNN_MAX_PUBLIC_PAGES`; o coletor para quando encontra páginas fora da janela.
-- Gmail falha em Actions: confirme `GMAILR_KEY` e a presença de `secrets/gmailr-token.rds.enc`.
+- Gmail falha em Actions: confirme `GMAILR_KEY` e `GMAILR_TOKEN_ENC_B64`.
 - Envio ausente em execução manual: confirme se `dry_run` está desmarcado.

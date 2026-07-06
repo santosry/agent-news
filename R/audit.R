@@ -35,3 +35,48 @@ write_audit <- function(items, run_started_at, selected_ids, config) {
   list(csv_path = normalizePath(csv_path, winslash = "/", mustWork = FALSE),
        json_path = normalizePath(json_path, winslash = "/", mustWork = FALSE))
 }
+
+write_run_report <- function(status_tbl, selected, invariants, send_result, run_started_at, config, html_path, audit_paths) {
+  dir.create(config$output_dir, showWarnings = FALSE, recursive = TRUE)
+  stamp <- format(run_started_at, "%Y%m%d-%H%M%S")
+  path <- file.path(config$output_dir, paste0("news-run-report-", stamp, ".json"))
+
+  send_tbl <- send_result$per_recipient %||% tibble::tibble()
+  safe_send <- if (nrow(send_tbl) == 0) {
+    list()
+  } else {
+    apply(send_tbl, 1, as.list)
+  }
+
+  report <- list(
+    run_started_at = format(run_started_at, "%Y-%m-%dT%H:%M:%S%z"),
+    run_finished_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+    timezone = config$timezone,
+    timezone_label = config$timezone_label,
+    dry_run = config$dry_run,
+    window_start = format(config$window_start, "%Y-%m-%dT%H:%M:%S%z"),
+    window_end = format(config$window_end, "%Y-%m-%dT%H:%M:%S%z"),
+    rank_model = config$rank_model,
+    summary_model = config$summary_model,
+    openai_configured = openai_available(config),
+    recipients = config$recipients,
+    invalid_recipients = config$invalid_recipients,
+    source_status = status_tbl,
+    selected_count = nrow(selected),
+    selected_ids = selected$id %||% character(),
+    invariants = invariants,
+    send = list(
+      dry_run = isTRUE(send_result$dry_run),
+      any_success = isTRUE(send_result$any_success),
+      per_recipient = safe_send
+    ),
+    artifacts = list(
+      html = basename(html_path),
+      audit_csv = basename(audit_paths$csv_path),
+      audit_json = basename(audit_paths$json_path)
+    )
+  )
+
+  jsonlite::write_json(report, path, pretty = TRUE, auto_unbox = TRUE, dataframe = "rows", null = "null")
+  normalizePath(path, winslash = "/", mustWork = FALSE)
+}

@@ -12,6 +12,7 @@ dir.create("secrets", showWarnings = FALSE)
 client_path <- Sys.getenv("GMAIL_OAUTH_CLIENT", "oauth_client.json")
 plain_token_path <- Sys.getenv("GMAIL_TOKEN_PATH", "secrets/gmailr-token.rds")
 encrypted_token_path <- Sys.getenv("GMAIL_ENCRYPTED_TOKEN_PATH", "secrets/gmailr-token.rds.enc")
+b64_token_path <- paste0(encrypted_token_path, ".b64.txt")
 email <- Sys.getenv("EMAIL_FROM", "ryandpaulosantos@gmail.com")
 
 if (!file.exists(client_path)) {
@@ -30,7 +31,10 @@ if (nzchar(key_text)) {
   iv <- openssl::rand_bytes(16)
   encrypted <- openssl::aes_cbc_encrypt(serialize(token, NULL), key = key, iv = iv)
   saveRDS(list(version = 1L, cipher = "aes-256-cbc", iv = iv, data = encrypted), encrypted_token_path)
-  message("Encrypted token saved at ", encrypted_token_path, ". Commit only the encrypted token if the repository owner chooses this deployment mode.")
+  encrypted_file <- readBin(encrypted_token_path, what = "raw", n = file.info(encrypted_token_path)$size)
+  writeLines(jsonlite::base64_enc(encrypted_file), b64_token_path, useBytes = TRUE)
+  message("Encrypted token saved at ", encrypted_token_path, ". Do not commit it.")
+  message("Base64 token secret saved at ", b64_token_path, ". Copy its content to GitHub Secrets as GMAILR_TOKEN_ENC_B64.")
 } else {
   message("GMAILR_KEY is not set, so no encrypted token was written.")
 }

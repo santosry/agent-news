@@ -1,7 +1,7 @@
 run_news_agent <- function(config = load_config()) {
   run_started_at <- Sys.time()
   log_info("Weekly news agent started. dry_run={config$dry_run}")
-  log_info("Window: {format(config$window_start, '%Y-%m-%d %H:%M:%S %Z')} to {format(config$window_end, '%Y-%m-%d %H:%M:%S %Z')}")
+  log_info("Window: {format(config$window_start, '%Y-%m-%d %H:%M:%S %Z')} to {format(config$window_end, '%Y-%m-%d %H:%M:%S %Z')} ({config$timezone_label})")
   log_info("Ranking model: {config$rank_model}; summary model: {config$summary_model}")
   log_info("Recipients: {paste(config$recipients, collapse = ', ')}")
 
@@ -36,6 +36,10 @@ run_news_agent <- function(config = load_config()) {
   log_info("Selected for summary: {nrow(selected)}")
 
   summarized <- summarize_selected(selected, config)
+  invariants <- validate_run_invariants(all_items, ranked, summarized, status_tbl, config)
+  if (length(invariants$errors) > 0) {
+    stop("Run invariant validation failed: ", paste(invariants$errors, collapse = "; "), call. = FALSE)
+  }
   html <- render_email_html(summarized, status_tbl, config)
   html_path <- write_email_html(html, run_started_at, config)
 
@@ -57,6 +61,16 @@ run_news_agent <- function(config = load_config()) {
   audit <- write_audit(final_items, run_started_at, summarized$id, config)
 
   send_result <- send_clipping(html, config)
+  report_path <- write_run_report(
+    status_tbl = status_tbl,
+    selected = summarized,
+    invariants = invariants,
+    send_result = send_result,
+    run_started_at = run_started_at,
+    config = config,
+    html_path = html_path,
+    audit_paths = audit
+  )
 
   if (!config$dry_run && !isTRUE(send_result$any_success)) {
     return(list(
@@ -65,6 +79,7 @@ run_news_agent <- function(config = load_config()) {
       status = status_tbl,
       html_path = html_path,
       audit_path = audit$csv_path,
+      report_path = report_path,
       send_result = send_result
     ))
   }
@@ -77,6 +92,7 @@ run_news_agent <- function(config = load_config()) {
     html_path = html_path,
     audit_path = audit$csv_path,
     audit_json_path = audit$json_path,
+    report_path = report_path,
     send_result = send_result
   )
 }

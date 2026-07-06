@@ -8,5 +8,7 @@ Este projeto é prioritariamente R. Futuras sessões do Codex devem preservar a 
 - O agente não pode inventar conteúdo jornalístico, completar fatos ausentes nem atribuir notícia a veículo diferente da fonte original.
 - Datas de publicação precisam ser validadas; notícia sem data confiável deve ser descartada ou registrada como data não validada.
 - Alterações de comportamento exigem atualização do `README.md`.
-- O workflow semanal deve permanecer aos sábados às 08:00 em `America/Sao_Paulo`, salvo instrução expressa do proprietário.
+- O workflow semanal deve permanecer aos sábados às 08:00 no Horário de Brasília (`America/Sao_Paulo`), salvo instrução expressa do proprietário.
 - Os destinatários padrão são Ryan (`ryandpaulosantos@gmail.com`) e Letícia (`leticiamariadiasfreitas@gmail.com`).
+- Não publique outputs, tokens, `.Renviron`, `oauth_client.json` ou qualquer arquivo real em `secrets/`.
+- Rode `scripts/validate_no_secrets.R`, testes e, quando alterar coleta/performance, `scripts/benchmark_agent.R`.

@@ -61,6 +61,8 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
     summary_model = Sys.getenv("OPENAI_SUMMARY_MODEL", "gpt-5.5"),
     openai_reasoning_effort = Sys.getenv("OPENAI_REASONING_EFFORT", "low"),
     min_score = as.numeric(Sys.getenv("NEWS_MIN_SCORE", "55")),
+    source_min_score = as.numeric(Sys.getenv("NEWS_SOURCE_MIN_SCORE", "40")),
+    min_news_per_source = as.integer(Sys.getenv("NEWS_MIN_NEWS_PER_SOURCE", "1")),
     max_candidates_per_source = as.integer(Sys.getenv("MAX_CANDIDATES_PER_SOURCE", "60")),
     news_per_source = as.integer(Sys.getenv("NEWS_PER_SOURCE", "4")),
     max_selected = as.integer(Sys.getenv("MAX_SELECTED_NEWS", "16")),

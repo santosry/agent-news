@@ -106,52 +106,99 @@ validate_ranking_output <- function(out, input_items) {
 
 heuristic_rank <- function(items) {
   priority_terms <- c(
-    "saude", "sus", "epidem", "vacina", "ciencia", "pesquisa", "clima", "ambiente",
-    "poluicao", "infra", "econom", "fiscal", "governo", "prefeitura", "campos",
+    "saude", "sus", "epidemia", "epidemiologia", "vacina", "ciencia", "pesquisa", "clima", "ambiente",
+    "poluicao", "infraestrutura", "economia", "economico", "fiscal", "governo", "prefeitura", "campos",
     "goytacazes", "norte fluminense", "rio de janeiro", "inteligencia artificial",
-    "tecnologia", "politica", "gestao"
+    "tecnologia", "politica", "gestao", "health", "public health", "science",
+    "research", "scientist", "epidemiology", "vaccine", "climate", "heatwave",
+    "environment", "pollution", "economy", "economic", "fiscal", "government",
+    "policy", "infrastructure", "artificial intelligence", "technology", "deaths",
+    "excess deaths", "hospital", "disease", "emissions"
   )
-  penalty_terms <- c("celebridade", "bbb", "reality", "horoscopo", "famos", "futebol", "copa", "show")
+  penalty_terms <- c(
+    "celebridade", "bbb", "reality", "horoscopo", "famos", "futebol", "copa",
+    "show", "serie c", "carioca", "quartas", "estadio", "partida", "celebrity",
+    "taylor swift", "wedding", "football", "premier league"
+  )
 
   text <- normalize_title(paste(items$title, items$excerpt))
   score <- rep(35, length(text))
-  for (term in priority_terms) score <- score + ifelse(stringr::str_detect(text, normalize_title(term)), 8, 0)
-  for (term in penalty_terms) score <- score - ifelse(stringr::str_detect(text, normalize_title(term)), 18, 0)
+  for (term in priority_terms) score <- score + ifelse(has_normalized_term(text, term), 8, 0)
+  for (term in penalty_terms) score <- score - ifelse(has_normalized_term(text, term), 18, 0)
   score <- pmax(0, pmin(100, score))
 
   items |>
     dplyr::mutate(
       score = score,
       topic = dplyr::case_when(
-        stringr::str_detect(text, "saude|sus|epidem|vacina") ~ "saúde pública",
-        stringr::str_detect(text, "econom|fiscal|mercado") ~ "economia",
-        stringr::str_detect(text, "clima|ambiente|poluicao") ~ "meio ambiente",
-        stringr::str_detect(text, "campos|goytacazes|norte fluminense") ~ "Campos/Norte Fluminense",
+        has_any_normalized_term(text, c("saude", "sus", "epidemia", "epidemiologia", "vacina", "health", "public health", "vaccine", "hospital", "disease")) ~ "saúde pública",
+        has_any_normalized_term(text, c("economia", "economico", "fiscal", "mercado", "economy", "economic")) ~ "economia",
+        has_any_normalized_term(text, c("clima", "ambiente", "poluicao", "climate", "heatwave", "environment", "pollution", "emissions")) ~ "meio ambiente",
+        has_any_normalized_term(text, c("campos", "goytacazes", "norte fluminense")) ~ "Campos/Norte Fluminense",
         TRUE ~ "interesse público"
       ),
       justification = "Ranking heurístico determinístico usado sem OPENAI_API_KEY."
     )
 }
 
+has_normalized_term <- function(text, term) {
+  term_norm <- normalize_title(term)
+  if (!nzchar(term_norm)) return(rep(FALSE, length(text)))
+  pattern <- paste0("(^| )", stringr::str_replace_all(term_norm, " ", " +"), "( |$)")
+  stringr::str_detect(text, pattern)
+}
+
+has_any_normalized_term <- function(text, terms) {
+  hits <- rep(FALSE, length(text))
+  for (term in terms) hits <- hits | has_normalized_term(text, term)
+  hits
+}
+
 select_for_clipping <- function(ranked, config) {
   if (nrow(ranked) == 0) return(ranked)
 
-  eligible <- ranked |>
+  valid <- ranked |>
     dplyr::filter(
       is.na(.data$discard_reason) | .data$discard_reason == "",
-      !is.na(.data$score),
-      .data$score >= config$min_score
+      !is.na(.data$score)
     ) |>
     dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at))
 
-  by_source <- eligible |>
+  source_min_score <- config$source_min_score %||% min(config$min_score, 40)
+  min_news_per_source <- min(config$min_news_per_source %||% 1L, config$news_per_source)
+
+  protected <- valid |>
+    dplyr::filter(.data$score >= source_min_score) |>
     dplyr::group_by(.data$source) |>
-    dplyr::slice_head(n = config$news_per_source) |>
+    dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at), .by_group = TRUE) |>
+    dplyr::slice_head(n = min_news_per_source) |>
     dplyr::ungroup()
 
-  by_source |>
+  fill_slots <- max(config$max_selected - nrow(protected), 0L)
+  if (fill_slots == 0L) {
+    return(protected |>
+      dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at)) |>
+      utils::head(config$max_selected))
+  }
+
+  protected_counts <- protected |>
+    dplyr::count(.data$source, name = "protected_n")
+
+  fill <- valid |>
+    dplyr::filter(.data$score >= config$min_score, !.data$id %in% protected$id) |>
+    dplyr::left_join(protected_counts, by = "source") |>
+    dplyr::mutate(remaining_source_slots = pmax(config$news_per_source - tidyr::replace_na(.data$protected_n, 0L), 0L)) |>
+    dplyr::group_by(.data$source) |>
+    dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at), .by_group = TRUE) |>
+    dplyr::filter(dplyr::row_number() <= dplyr::first(.data$remaining_source_slots)) |>
+    dplyr::ungroup() |>
+    dplyr::select(-dplyr::any_of(c("protected_n", "remaining_source_slots"))) |>
     dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at)) |>
-    utils::head(config$max_selected)
+    utils::head(fill_slots)
+
+  dplyr::bind_rows(protected, fill) |>
+    dplyr::distinct(.data$id, .keep_all = TRUE) |>
+    dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at))
 }
 
 top_three <- function(selected) {

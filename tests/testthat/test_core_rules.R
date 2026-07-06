@@ -37,6 +37,42 @@ test_that("Outlook COM failures are summarized without CLIXML noise", {
   expect_match(clean_powershell_output(output), "Outlook desktop", fixed = TRUE)
 })
 
+test_that("heuristic ranking matches whole normalized terms", {
+  items <- tibble::tibble(
+    id = c("crime", "sus"),
+    source = c("Folha1", "Folha1"),
+    title = c("Jovem suspeito de roubo e preso", "SUS amplia atendimento em Campos"),
+    excerpt = c("Caso policial sem relacao sanitaria.", "Politica publica de saude municipal."),
+    published_at = lubridate::ymd_hms(rep("2026-07-05 10:00:00", 2), tz = "America/Sao_Paulo"),
+    discard_reason = NA_character_
+  )
+  ranked <- heuristic_rank(items)
+  expect_equal(ranked$topic[ranked$id == "crime"], "interesse público")
+  expect_equal(ranked$topic[ranked$id == "sus"], "saúde pública")
+})
+
+test_that("selection protects one relevant item per source before filling by score", {
+  ranked <- tibble::tibble(
+    id = c("j1", "j2", "f1", "b1", "c1"),
+    source = c("J3News", "J3News", "Folha1", "BBC News", "CNN Brasil"),
+    title = c("J1", "J2", "F1", "B1", "C1"),
+    excerpt = "",
+    published_at = lubridate::ymd_hms(rep("2026-07-05 10:00:00", 5), tz = "America/Sao_Paulo"),
+    score = c(90, 88, 43, 42, 41),
+    topic = "interesse público",
+    justification = "teste",
+    discard_reason = NA_character_
+  )
+  cfg <- load_config(dry_run = TRUE)
+  cfg$min_score <- 55
+  cfg$source_min_score <- 40
+  cfg$min_news_per_source <- 1
+  cfg$news_per_source <- 4
+  cfg$max_selected <- 4
+  selected <- select_for_clipping(ranked, cfg)
+  expect_setequal(selected$source, c("J3News", "Folha1", "BBC News", "CNN Brasil"))
+})
+
 test_that("dates parse with timezone and respect seven day window", {
   tz <- "America/Sao_Paulo"
   now <- lubridate::ymd_hms("2026-07-05 18:00:00", tz = tz)

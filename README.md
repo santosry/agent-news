@@ -40,6 +40,8 @@ O ranking usa a OpenAI Responses API com Structured Outputs. O modelo padrão de
 
 O ranking recebe `id`, fonte, data, título e trecho. Retorna `id`, `score`, `topic` e `justification`. O resumo é gerado somente para notícias selecionadas depois do ranking e da deduplicação.
 
+A seleção final evita concentração em um único veículo. Quando uma fonte tem notícia válida acima de `NEWS_SOURCE_MIN_SCORE`, o agente protege pelo menos `NEWS_MIN_NEWS_PER_SOURCE` item por fonte antes de preencher as demais posições com as maiores pontuações globais. O corte principal continua em `NEWS_MIN_SCORE`.
+
 ## Deduplicação
 
 Há duas etapas:
@@ -64,6 +66,8 @@ Destinatários padrão:
 - `leticiamariadiasfreitas@gmail.com`
 
 `EMAIL_TO` aceita endereços separados por vírgula ou ponto e vírgula. O envio é individual por destinatário e o status de cada envio é registrado.
+
+O e-mail semanal não envia anexos. HTML, CSV, JSON, auditoria e benchmark ficam preservados como artifacts da execução no GitHub Actions ou como arquivos locais em `outputs/`.
 
 ## Configuração local no Windows
 

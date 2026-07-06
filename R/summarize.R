@@ -29,7 +29,9 @@ summarize_selected <- function(selected, config) {
     item <- selected[i, ]
 
     if (!openai_available(config)) {
-      if (!config$dry_run) stop("OPENAI_API_KEY is required outside dry run.", call. = FALSE)
+      if (!config$dry_run && !isTRUE(config$allow_no_openai)) {
+        stop("OPENAI_API_KEY is required outside dry run unless ALLOW_NO_OPENAI=true.", call. = FALSE)
+      }
       article_text <- item$excerpt[[1]]
       out <- fallback_summary(item, article_text)
     } else {
@@ -86,13 +88,13 @@ summarize_one_with_openai <- function(item, article_text, config) {
 fallback_summary <- function(item, article_text) {
   basis <- if (nzchar(article_text)) article_text else item$excerpt[[1]]
   summary <- clean_text(substr(basis, 1, 600))
-  if (!nzchar(summary)) summary <- "Resumo indisponível no dry run sem OPENAI_API_KEY."
+  if (!nzchar(summary)) summary <- "Resumo indisponível no modo determinístico sem OPENAI_API_KEY."
   list(
     title_final = item$title[[1]],
     topic = item$topic[[1]],
     summary = summary,
     why_matters = item$justification[[1]],
-    caveat = "Resumo gerado em dry run sem chamada à OpenAI; consulte a fonte original antes de usar a informação."
+    caveat = "Resumo gerado sem chamada à OpenAI; consulte a fonte original antes de usar a informação."
   )
 }
 

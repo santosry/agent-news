@@ -9,6 +9,34 @@ test_that("recipient parsing normalizes, validates, and deduplicates addresses",
   expect_equal(parsed$invalid, "bad")
 })
 
+test_that("no-key production mode is explicit", {
+  withr::local_envvar(c(
+    DRY_RUN = "false",
+    ALLOW_NO_OPENAI = "true",
+    EMAIL_TRANSPORT = "outlook",
+    OPENAI_API_KEY = ""
+  ))
+  cfg <- load_config()
+  expect_false(cfg$dry_run)
+  expect_true(cfg$allow_no_openai)
+  expect_equal(cfg$email_transport, "outlook")
+})
+
+test_that("PowerShell command encoding is stable for Outlook transport", {
+  encoded <- encode_powershell_command("Write-Output 'ok'")
+  decoded <- jsonlite::base64_dec(encoded)
+  expect_false(grepl("[\r\n]", encoded))
+  expect_equal(as.integer(decoded[1:2]), c(87L, 0L))
+})
+
+test_that("Outlook COM failures are summarized without CLIXML noise", {
+  output <- c(
+    "#< CLIXML",
+    "<S S=\"Error\">New-Object : Classe n\u00e3o registrada 80040154 REGDB_E_CLASSNOTREG</S>"
+  )
+  expect_match(clean_powershell_output(output), "Outlook desktop", fixed = TRUE)
+})
+
 test_that("dates parse with timezone and respect seven day window", {
   tz <- "America/Sao_Paulo"
   now <- lubridate::ymd_hms("2026-07-05 18:00:00", tz = tz)

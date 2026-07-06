@@ -26,7 +26,7 @@ Cada fonte tem coletor independente. Falha em uma fonte é registrada e não imp
 - `R/deduplicate.R`: normalização e deduplicação exata/fuzzy.
 - `R/openai.R`, `R/rank.R`, `R/summarize.R`: Responses API, ranking e resumo.
 - `R/render_email.R`: HTML compatível com Gmail.
-- `R/send_email.R`: autenticação e envio Gmail.
+- `R/send_email.R`: autenticação e envio por Gmail ou Outlook local.
 - `R/audit.R`: CSV/JSON de auditoria e relatório de execução.
 - `R/validate.R`: invariantes de produção antes do envio.
 - `scripts/validate_no_secrets.R`: bloqueio de secrets rastreados ou padrões sensíveis.
@@ -82,7 +82,7 @@ Restaure dependências travadas:
 Se precisar reconstruir o ambiente sem `renv`, instale dependências manualmente:
 
 ```powershell
-& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" -e "install.packages(c('dplyr','purrr','stringr','stringi','tibble','tidyr','lubridate','jsonlite','rvest','xml2','httr2','gmailr','glue','htmltools','openssl','yaml','testthat'), repos='https://cloud.r-project.org')"
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" -e "install.packages(c('dplyr','purrr','stringr','stringi','tibble','tidyr','lubridate','jsonlite','rvest','xml2','httr2','gmailr','glue','htmltools','openssl','yaml','testthat','withr'), repos='https://cloud.r-project.org')"
 ```
 
 Copie `.Renviron.example` para `.Renviron` e preencha apenas localmente. `.Renviron` não deve ser versionado.
@@ -97,7 +97,7 @@ OPENAI_RANK_MODEL=gpt-5.4-mini
 OPENAI_SUMMARY_MODEL=gpt-5.5
 ```
 
-Sem `OPENAI_API_KEY`, o modo `DRY_RUN=true` usa ranking e resumo heurísticos apenas para validar coleta, HTML e auditoria. Fora de dry run, a chave é obrigatória.
+Sem `OPENAI_API_KEY`, o modo `DRY_RUN=true` usa ranking e resumo heurísticos apenas para validar coleta, HTML e auditoria. Para executar de verdade sem OpenAI, defina `ALLOW_NO_OPENAI=true`; nesse caso o agente usa ranking determinístico e resumo baseado no trecho/conteúdo público coletado, sem chamar IA externa.
 
 ## Gmail
 
@@ -112,6 +112,19 @@ Sem `OPENAI_API_KEY`, o modo `DRY_RUN=true` usa ranking e resumo heurísticos ap
 O script gera `secrets/gmailr-token.rds` para uso local e, quando `GMAILR_KEY` está definida, `secrets/gmailr-token.rds.enc` e `secrets/gmailr-token.rds.enc.b64.txt`. Nunca commite `oauth_client.json`, tokens ou qualquer arquivo dentro de `secrets/`.
 
 Para GitHub Actions, copie o conteúdo de `secrets/gmailr-token.rds.enc.b64.txt` para o secret `GMAILR_TOKEN_ENC_B64`.
+
+## Envio Sem Gmail Key
+
+No Windows, é possível enviar sem `GMAILR_KEY` usando o Outlook local já instalado e autenticado:
+
+```powershell
+$env:DRY_RUN="false"
+$env:ALLOW_NO_OPENAI="true"
+$env:EMAIL_TRANSPORT="outlook"
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" agent_news.R
+```
+
+Esse modo não usa OpenAI nem Gmail API. Ele depende de uma conta já configurada no Outlook do Windows. Se o Outlook não existir, não estiver autenticado, ou bloquear automação COM, o agente registra a falha por destinatário e não oculta o erro.
 
 ## GitHub Secrets
 
@@ -136,6 +149,18 @@ Envio real:
 
 ```powershell
 $env:DRY_RUN="false"
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" agent_news.R
+```
+
+Envio real sem keys, via Outlook local:
+
+```powershell
+$env:DRY_RUN="false"
+$env:ALLOW_NO_OPENAI="true"
+$env:EMAIL_TRANSPORT="outlook"
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:GMAILR_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:GMAILR_TOKEN_ENC_B64 -ErrorAction SilentlyContinue
 & "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" agent_news.R
 ```
 

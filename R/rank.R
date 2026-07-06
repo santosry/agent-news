@@ -29,10 +29,10 @@ rank_news <- function(items, config) {
   }
 
   if (!openai_available(config)) {
-    if (!config$dry_run) {
-      stop("OPENAI_API_KEY is required outside dry run.", call. = FALSE)
+    if (!config$dry_run && !isTRUE(config$allow_no_openai)) {
+      stop("OPENAI_API_KEY is required outside dry run unless ALLOW_NO_OPENAI=true.", call. = FALSE)
     }
-    log_warn("OPENAI_API_KEY missing. Using deterministic dry-run ranking.")
+    log_warn("OPENAI_API_KEY missing. Using deterministic heuristic ranking.")
     return(heuristic_rank(items))
   }
 
@@ -129,7 +129,7 @@ heuristic_rank <- function(items) {
         stringr::str_detect(text, "campos|goytacazes|norte fluminense") ~ "Campos/Norte Fluminense",
         TRUE ~ "interesse público"
       ),
-      justification = "Ranking heurístico usado apenas no dry run sem OPENAI_API_KEY."
+      justification = "Ranking heurístico determinístico usado sem OPENAI_API_KEY."
     )
 }
 

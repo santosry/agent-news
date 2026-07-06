@@ -59,6 +59,8 @@ write_run_report <- function(status_tbl, selected, invariants, send_result, run_
     rank_model = config$rank_model,
     summary_model = config$summary_model,
     openai_configured = openai_available(config),
+    allow_no_openai = isTRUE(config$allow_no_openai),
+    email_transport = config$email_transport,
     recipients = config$recipients,
     invalid_recipients = config$invalid_recipients,
     source_status = status_tbl,

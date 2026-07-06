@@ -12,3 +12,4 @@ Este projeto é prioritariamente R. Futuras sessões do Codex devem preservar a 
 - Os destinatários padrão são Ryan (`ryandpaulosantos@gmail.com`) e Letícia (`leticiamariadiasfreitas@gmail.com`).
 - Não publique outputs, tokens, `.Renviron`, `oauth_client.json` ou qualquer arquivo real em `secrets/`.
 - Rode `scripts/validate_no_secrets.R`, testes e, quando alterar coleta/performance, `scripts/benchmark_agent.R`.
+- O modo sem keys usa `ALLOW_NO_OPENAI=true` e, para envio local, `EMAIL_TRANSPORT=outlook`; não trate isso como equivalente ao envio via GitHub Actions.

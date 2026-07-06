@@ -26,7 +26,7 @@ render_email_html <- function(news, status_tbl, config) {
       glue::glue(
         "<article style='border-top:1px solid #e5e7eb;padding:18px 0'>",
         "<h3 style='font-size:18px;margin:0 0 6px;color:#111827'><a href='{htmltools::htmlEscape(item$url)}' style='color:#111827;text-decoration:none'>{htmltools::htmlEscape(item$title_final)}</a></h3>",
-        "<p style='margin:0 0 10px;color:#6b7280;font-size:13px'>{item$source} · {format(item$published_at, '%d/%m/%Y')} · {htmltools::htmlEscape(item$topic)} · escore {round(item$score)}</p>",
+        "<p style='margin:0 0 10px;color:#6b7280;font-size:13px'>{item$source} &middot; {format(item$published_at, '%d/%m/%Y')} &middot; {htmltools::htmlEscape(item$topic)} &middot; escore {round(item$score)}</p>",
         "<p style='margin:0 0 10px'><strong>Resumo:</strong> {htmltools::htmlEscape(item$summary)}</p>",
         "<p style='margin:0 0 10px'><strong>Por que importa:</strong> {htmltools::htmlEscape(item$why_matters)}</p>",
         "<p style='margin:0 0 10px'><strong>Ressalva:</strong> {htmltools::htmlEscape(item$caveat)}</p>",
@@ -42,7 +42,7 @@ render_email_html <- function(news, status_tbl, config) {
   })
 
   top_block <- if (nrow(top) == 0) {
-    "<p style='margin:0;color:#6b7280'>Nenhuma notícia atingiu o limiar editorial configurado nesta execução.</p>"
+    "<p style='margin:0;color:#6b7280'>Nenhuma not\u00edcia atingiu o limiar editorial configurado nesta execu\u00e7\u00e3o.</p>"
   } else {
     paste(purrr::map_chr(seq_len(nrow(top)), function(i) {
       item <- top[i, ]
@@ -57,36 +57,44 @@ render_email_html <- function(news, status_tbl, config) {
   }
 
   period <- glue::glue("{format(config$window_start, '%d/%m/%Y')} a {format(config$window_end, '%d/%m/%Y')} ({config$timezone_label})")
+  methodology <- methodology_note(config)
 
   paste0(
     "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'></head>",
     "<body style='margin:0;background:#f8fafc;padding:0'>",
-    "<div style='display:none;max-height:0;overflow:hidden'>Clipping semanal de notícias selecionadas por IA.</div>",
+    "<div style='display:none;max-height:0;overflow:hidden'>Clipping semanal de not\u00edcias selecionadas.</div>",
     "<main style='", css, "max-width:760px;margin:0 auto;background:#ffffff;padding:28px 20px'>",
-    "<h1 style='font-size:24px;margin:0 0 4px;color:#111827'>Radar semanal de notícias</h1>",
-    "<p style='margin:0 0 24px;color:#6b7280'>Período observado: ", period, "</p>",
+    "<h1 style='font-size:24px;margin:0 0 4px;color:#111827'>Radar semanal de not\u00edcias</h1>",
+    "<p style='margin:0 0 24px;color:#6b7280'>Per\u00edodo observado: ", period, "</p>",
     "<section style='background:#f3f4f6;border-left:4px solid #b91c1c;padding:16px;margin:0 0 24px'>",
     "<h2 style='font-size:20px;margin:0 0 12px;color:#111827'>Ryan, leia estas 3</h2>",
     if (nrow(top) > 0) paste0("<ol style='padding-left:20px;margin:0'>", top_block, "</ol>") else top_block,
     "</section>",
     paste(source_blocks, collapse = "\n"),
     "<footer style='border-top:1px solid #e5e7eb;margin-top:30px;padding-top:16px;color:#6b7280;font-size:13px'>",
-    "Nota metodológica: a seleção foi realizada por IA a partir do material público coletado. Consulte as fontes primárias para decisões críticas, uso científico ou confirmação de detalhes.",
+    htmltools::htmlEscape(methodology),
     "</footer>",
     "</main></body></html>"
   )
 }
 
+methodology_note <- function(config) {
+  if (isTRUE(config$allow_no_openai) && !nzchar(config$openai_api_key)) {
+    return("Nota metodol\u00f3gica: esta execu\u00e7\u00e3o foi realizada sem OpenAI API key; a sele\u00e7\u00e3o usou regras determin\u00edsticas de relev\u00e2ncia sobre o material p\u00fablico coletado. Consulte as fontes prim\u00e1rias para decis\u00f5es cr\u00edticas, uso cient\u00edfico ou confirma\u00e7\u00e3o de detalhes.")
+  }
+  "Nota metodol\u00f3gica: a sele\u00e7\u00e3o foi realizada por IA a partir do material p\u00fablico coletado. Consulte as fontes prim\u00e1rias para decis\u00f5es cr\u00edticas, uso cient\u00edfico ou confirma\u00e7\u00e3o de detalhes."
+}
+
 source_empty_message <- function(status) {
-  if (nrow(status) == 0) return("Fonte não executada.")
+  if (nrow(status) == 0) return("Fonte n\u00e3o executada.")
   switch(
     status$status[[1]],
-    failed = paste("Falha técnica de coleta:", status$diagnostics[[1]]),
+    failed = paste("Falha t\u00e9cnica de coleta:", status$diagnostics[[1]]),
     no_items = "Fonte acessada, mas nenhum candidato foi descoberto.",
-    no_valid_dates = "Fonte acessada, mas nenhuma notícia teve data de publicação validada.",
-    no_window_items = "Fonte acessada, mas não houve notícia com data validada dentro da janela semanal.",
-    ok = "Fonte coletada, mas nenhuma notícia atingiu o limiar editorial após ranking e deduplicação.",
-    "Sem notícia selecionada nesta execução."
+    no_valid_dates = "Fonte acessada, mas nenhuma not\u00edcia teve data de publica\u00e7\u00e3o validada.",
+    no_window_items = "Fonte acessada, mas n\u00e3o houve not\u00edcia com data validada dentro da janela semanal.",
+    ok = "Fonte coletada, mas nenhuma not\u00edcia atingiu o limiar editorial ap\u00f3s ranking e deduplica\u00e7\u00e3o.",
+    "Sem not\u00edcia selecionada nesta execu\u00e7\u00e3o."
   )
 }
 

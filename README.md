@@ -134,9 +134,11 @@ Esse modo não usa OpenAI nem Gmail API. Ele depende de uma conta já configurad
 
 Cadastre no repositório:
 
-- `OPENAI_API_KEY`
-- `GMAILR_KEY`
-- `GMAILR_TOKEN_ENC_B64`
+- `OPENAI_API_KEY`: opcional quando `ALLOW_NO_OPENAI=true`; recomendado para ranking e resumo por IA.
+- `GMAILR_KEY`: obrigatório para envio real pelo GitHub Actions.
+- `GMAILR_TOKEN_ENC_B64`: obrigatório para envio real pelo GitHub Actions.
+
+O workflow publicado define `ALLOW_NO_OPENAI=true` por padrão, então a execução semanal consegue coletar, selecionar, resumir de forma determinística e gerar artifacts sem chave da OpenAI. Para envio real pelo Gmail no GitHub Actions, o token Gmail criptografado continua obrigatório.
 
 Não publique `oauth_client.json`, `.Renviron`, tokens ou arquivos em `secrets/`. Não crie valores falsos.
 

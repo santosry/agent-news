@@ -94,7 +94,7 @@ parse_datetime_sao <- function(x, tz = "America/Sao_Paulo", date_only_hour = 0) 
   parsed <- tryCatch(
     suppressMessages(suppressWarnings(lubridate::parse_date_time(
       x,
-      orders = c("ymd HMS z", "ymd HMS", "ymd HM", "ymd", "a, d b Y H:M:S z", "d b Y H:M:S z"),
+      orders = c("ymd HMS z", "ymd HMS", "ymd HM", "ymd", "dmy HMS", "dmy HM", "dmy", "a, d b Y H:M:S z", "d b Y H:M:S z"),
       tz = tz,
       locale = "C"
     ))),
@@ -107,6 +107,9 @@ parse_datetime_sao <- function(x, tz = "America/Sao_Paulo", date_only_hour = 0) 
 
   if (stringr::str_detect(x, "^[0-9]{4}-[0-9]{2}-[0-9]{2}$") && date_only_hour != 0) {
     parsed <- lubridate::ymd_hms(paste0(x, sprintf(" %02d:00:00", date_only_hour)), tz = tz)
+  }
+  if (stringr::str_detect(x, "^[0-9]{2}/[0-9]{2}/[0-9]{4}$") && date_only_hour != 0) {
+    parsed <- lubridate::dmy_hms(paste0(x, sprintf(" %02d:00:00", date_only_hour)), tz = tz)
   }
 
   lubridate::with_tz(parsed, tz)

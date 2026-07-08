@@ -14,3 +14,4 @@ Este projeto é prioritariamente R. Futuras sessões do Codex devem preservar a 
 - Rode `scripts/validate_no_secrets.R`, testes e, quando alterar coleta/performance, `scripts/benchmark_agent.R`.
 - O modo sem keys usa `ALLOW_NO_OPENAI=true` e, para envio local, `EMAIL_TRANSPORT=outlook`; não trate isso como equivalente ao envio via GitHub Actions.
 - O e-mail semanal deve ir sem anexos; auditoria, HTML e benchmark ficam em `outputs/` e nos artifacts do GitHub Actions.
+- IFF e UENF são fontes acadêmicas/institucionais prioritárias; mantenha coletores independentes e preserve a ordem local-regional antes de BBC/CNN.

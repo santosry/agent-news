@@ -9,18 +9,13 @@ run_news_agent <- function(config = load_config()) {
     log_warn("Invalid recipients ignored: {paste(config$invalid_recipients, collapse = ', ')}")
   }
 
-  collectors <- list(
-    J3News = collect_j3,
-    Folha1 = collect_folha1,
-    `BBC News` = collect_bbc,
-    `CNN Brasil` = collect_cnn
-  )
+  collectors <- news_collectors()
 
   source_results <- purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
   status_tbl <- source_status_table(source_results)
   all_items <- purrr::map_dfr(source_results, "items")
   if (!any_source_collected(status_tbl)) {
-    return(list(ok = FALSE, message = "Critical failure: none of the four sources was collected.", status = status_tbl))
+    return(list(ok = FALSE, message = "Critical failure: none of the configured sources was collected.", status = status_tbl))
   }
 
   candidates <- all_items |>
@@ -94,6 +89,17 @@ run_news_agent <- function(config = load_config()) {
     audit_json_path = audit$json_path,
     report_path = report_path,
     send_result = send_result
+  )
+}
+
+news_collectors <- function() {
+  list(
+    J3News = collect_j3,
+    Folha1 = collect_folha1,
+    IFF = collect_iff,
+    UENF = collect_uenf,
+    `BBC News` = collect_bbc,
+    `CNN Brasil` = collect_cnn
   )
 }
 

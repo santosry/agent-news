@@ -15,13 +15,15 @@ test_that("email rendering includes priority section, grouped sources, and links
   )
   status <- tibble::tibble(
     source = source_order(),
-    status = c("ok", "ok", "ok", "ok"),
+    status = rep("ok", length(source_order())),
     diagnostics = NA_character_
   )
   html <- render_email_html(news, status, cfg)
   expect_match(html, "Ryan, leia estas 3", fixed = TRUE)
   expect_match(html, "J3News", fixed = TRUE)
   expect_match(html, "Folha1", fixed = TRUE)
+  expect_match(html, "IFF", fixed = TRUE)
+  expect_match(html, "UENF", fixed = TRUE)
   expect_match(html, "https://j3news.com/a", fixed = TRUE)
   expect_match(html, "Nota metod", fixed = TRUE)
 })

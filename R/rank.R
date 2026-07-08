@@ -54,6 +54,7 @@ rank_news <- function(items, config) {
       "Do not invent facts. Do not change the source.",
       "Prioritize public health, science, epidemiology, public policy, public management, SUS, economy, fiscal policy, infrastructure, environment, climate, air pollution, public-impact technology, AI, Rio de Janeiro, Campos dos Goytacazes, and Norte Fluminense.",
       "For J3News and Folha1, give high weight to Campos dos Goytacazes, Norte Fluminense, local administration, health, infrastructure, regional economy, and municipal policy.",
+      "For IFF and UENF, give high weight to research, science, innovation, extension, graduate programs, academic opportunities, institutional decisions, public education, technology transfer, health, environment, and regional development.",
       "For BBC News and CNN Brasil, prioritize national and international facts with broad population, scientific, political, economic, environmental, or institutional impact.",
       "Strongly penalize gossip, celebrities, reality shows, astrology, routine sports, promotional content, and clickbait unless there is extraordinary public impact.",
       sep = "\n"
@@ -109,7 +110,10 @@ heuristic_rank <- function(items) {
     "saude", "sus", "epidemia", "epidemiologia", "vacina", "ciencia", "pesquisa", "clima", "ambiente",
     "poluicao", "infraestrutura", "economia", "economico", "fiscal", "governo", "prefeitura", "campos",
     "goytacazes", "norte fluminense", "rio de janeiro", "inteligencia artificial",
-    "tecnologia", "politica", "gestao", "health", "public health", "science",
+    "tecnologia", "politica", "gestao", "iff", "iffluminense", "uenf", "universidade",
+    "instituto federal", "educacao", "ensino", "extensao", "pos graduacao", "mestrado",
+    "doutorado", "iniciacao cientifica", "inovacao", "laboratorio", "bolsa", "edital",
+    "monitoria", "prograd", "proppg", "proex", "campus", "academia", "health", "public health", "science",
     "research", "scientist", "epidemiology", "vaccine", "climate", "heatwave",
     "environment", "pollution", "economy", "economic", "fiscal", "government",
     "policy", "infrastructure", "artificial intelligence", "technology", "deaths",
@@ -125,6 +129,7 @@ heuristic_rank <- function(items) {
   score <- rep(35, length(text))
   for (term in priority_terms) score <- score + ifelse(has_normalized_term(text, term), 8, 0)
   for (term in penalty_terms) score <- score - ifelse(has_normalized_term(text, term), 18, 0)
+  score <- score + ifelse(items$source %in% c("IFF", "UENF"), 8, 0)
   score <- pmax(0, pmin(100, score))
 
   items |>
@@ -134,6 +139,7 @@ heuristic_rank <- function(items) {
         has_any_normalized_term(text, c("saude", "sus", "epidemia", "epidemiologia", "vacina", "health", "public health", "vaccine", "hospital", "disease")) ~ "saúde pública",
         has_any_normalized_term(text, c("economia", "economico", "fiscal", "mercado", "economy", "economic")) ~ "economia",
         has_any_normalized_term(text, c("clima", "ambiente", "poluicao", "climate", "heatwave", "environment", "pollution", "emissions")) ~ "meio ambiente",
+        items$source %in% c("IFF", "UENF") | has_any_normalized_term(text, c("universidade", "instituto federal", "educacao", "ensino", "pesquisa", "extensao", "inovacao", "mestrado", "doutorado", "campus")) ~ "academia e instituições públicas",
         has_any_normalized_term(text, c("campos", "goytacazes", "norte fluminense")) ~ "Campos/Norte Fluminense",
         TRUE ~ "interesse público"
       ),

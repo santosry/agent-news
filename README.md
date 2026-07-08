@@ -4,7 +4,7 @@ Agente semanal em R para curadoria editorial de notícias reais, com coleta púb
 
 ## Objetivo
 
-O sistema funciona como um radar semanal de inteligência informacional, não como um agregador genérico de manchetes. Ele prioriza fatos com impacto público em saúde, ciência, epidemiologia, políticas públicas, gestão pública e em saúde, SUS, economia, política fiscal, infraestrutura, meio ambiente, mudanças climáticas, poluição atmosférica, tecnologia de impacto público, inteligência artificial, Rio de Janeiro, Campos dos Goytacazes e Norte Fluminense.
+O sistema funciona como um radar semanal de inteligência informacional, não como um agregador genérico de manchetes. Ele prioriza fatos com impacto público em saúde, ciência, epidemiologia, políticas públicas, gestão pública e em saúde, SUS, economia, política fiscal, infraestrutura, meio ambiente, mudanças climáticas, poluição atmosférica, tecnologia de impacto público, inteligência artificial, educação pública, pesquisa acadêmica, inovação, extensão universitária, Rio de Janeiro, Campos dos Goytacazes e Norte Fluminense.
 
 Conteúdos de fofoca, celebridades, realities, astrologia, promoção, esporte rotineiro e caça-cliques são penalizados, salvo impacto público extraordinário.
 
@@ -12,6 +12,8 @@ Conteúdos de fofoca, celebridades, realities, astrologia, promoção, esporte r
 
 - J3News: API pública WordPress `https://j3news.com/wp-json/wp/v2/posts`, com paginação e parada temporal.
 - Folha1: HTML público do site, lido por bytes e convertido conforme `charset=iso-8859-1`; datas vêm de metadados públicos da página.
+- IFF: HTML público paginado de `https://portal1.iff.edu.br/noticias`, com datas do bloco editorial `publicado`.
+- UENF: RSS oficial da categoria Notícias `https://uenf.br/portal/categoria/noticias/feed/`, complementado por páginas públicas de notícias quando necessário.
 - BBC News: feeds RSS oficiais `feeds.bbci.co.uk`, com `pubDate` validado.
 - CNN Brasil: `https://admin.cnnbrasil.com.br/sitemap-news.xml`, permitido no robots do subdomínio, complementado por páginas públicas de últimas notícias com validação via `article:published_time`.
 
@@ -57,8 +59,10 @@ O e-mail é HTML, sem JavaScript e com CSS inline. O período é apresentado em 
 
 1. J3News
 2. Folha1
-3. BBC News
-4. CNN Brasil
+3. IFF
+4. UENF
+5. BBC News
+6. CNN Brasil
 
 Destinatários padrão:
 
@@ -236,6 +240,8 @@ A auditoria guarda metadados, escore, tema, seleção e motivo básico de descar
 ## Solução de problemas
 
 - `Folha1` com acentos quebrados: confirme se a resposta declara `charset=iso-8859-1`; o coletor converte a partir do charset HTTP/HTML.
+- `IFF` sem itens: verifique se `https://portal1.iff.edu.br/noticias?b_start:int=0` segue acessível e se os blocos `tileItem` ainda contêm dia e hora.
+- `UENF` sem itens: verifique o feed `https://uenf.br/portal/categoria/noticias/feed/` e as páginas `https://uenf.br/portal/noticias/`.
 - `BBC News` sem itens: verifique status dos feeds `feeds.bbci.co.uk` e redirects.
 - `CNN Brasil` sem itens antigos: reduza ou aumente `CNN_MAX_PUBLIC_PAGES`; o coletor para quando encontra páginas fora da janela.
 - Gmail falha em Actions: confirme `GMAILR_KEY` e `GMAILR_TOKEN_ENC_B64`.

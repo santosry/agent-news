@@ -20,18 +20,15 @@ config <- load_config(dry_run = TRUE)
 config$openai_api_key <- ""
 config$max_candidates_per_source <- as.integer(Sys.getenv("BENCHMARK_MAX_CANDIDATES_PER_SOURCE", config$max_candidates_per_source))
 config$cnn_max_pages <- as.integer(Sys.getenv("BENCHMARK_CNN_MAX_PUBLIC_PAGES", config$cnn_max_pages))
+config$iff_max_pages <- as.integer(Sys.getenv("BENCHMARK_IFF_MAX_PAGES", config$iff_max_pages))
+config$uenf_max_pages <- as.integer(Sys.getenv("BENCHMARK_UENF_MAX_PAGES", config$uenf_max_pages))
 config$news_per_source <- as.integer(Sys.getenv("BENCHMARK_NEWS_PER_SOURCE", config$news_per_source))
 config$max_selected <- as.integer(Sys.getenv("BENCHMARK_MAX_SELECTED_NEWS", config$max_selected))
 
 run_started_at <- Sys.time()
 dir.create(config$output_dir, showWarnings = FALSE, recursive = TRUE)
 
-collectors <- list(
-  J3News = collect_j3,
-  Folha1 = collect_folha1,
-  `BBC News` = collect_bbc,
-  `CNN Brasil` = collect_cnn
-)
+collectors <- news_collectors()
 
 stages <- list()
 stages$collect <- measure_stage("collect", {
@@ -81,6 +78,8 @@ jsonlite::write_json(
     limits = list(
       max_candidates_per_source = config$max_candidates_per_source,
       cnn_max_pages = config$cnn_max_pages,
+      iff_max_pages = config$iff_max_pages,
+      uenf_max_pages = config$uenf_max_pages,
       news_per_source = config$news_per_source,
       max_selected = config$max_selected
     ),

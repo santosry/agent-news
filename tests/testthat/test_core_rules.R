@@ -39,26 +39,28 @@ test_that("Outlook COM failures are summarized without CLIXML noise", {
 
 test_that("heuristic ranking matches whole normalized terms", {
   items <- tibble::tibble(
-    id = c("crime", "sus"),
-    source = c("Folha1", "Folha1"),
-    title = c("Jovem suspeito de roubo e preso", "SUS amplia atendimento em Campos"),
-    excerpt = c("Caso policial sem relacao sanitaria.", "Politica publica de saude municipal."),
-    published_at = lubridate::ymd_hms(rep("2026-07-05 10:00:00", 2), tz = "America/Sao_Paulo"),
+    id = c("crime", "sus", "uenf"),
+    source = c("Folha1", "Folha1", "UENF"),
+    title = c("Jovem suspeito de roubo e preso", "SUS amplia atendimento em Campos", "UENF desenvolve metodologia inovadora"),
+    excerpt = c("Caso policial sem relacao sanitaria.", "Politica publica de saude municipal.", "Pesquisa em laboratorio e inovacao."),
+    published_at = lubridate::ymd_hms(rep("2026-07-05 10:00:00", 3), tz = "America/Sao_Paulo"),
     discard_reason = NA_character_
   )
   ranked <- heuristic_rank(items)
   expect_equal(ranked$topic[ranked$id == "crime"], "interesse público")
   expect_equal(ranked$topic[ranked$id == "sus"], "saúde pública")
+  expect_equal(ranked$topic[ranked$id == "uenf"], "academia e instituições públicas")
+  expect_gt(ranked$score[ranked$id == "uenf"], ranked$score[ranked$id == "crime"])
 })
 
 test_that("selection protects one relevant item per source before filling by score", {
   ranked <- tibble::tibble(
-    id = c("j1", "j2", "f1", "b1", "c1"),
-    source = c("J3News", "J3News", "Folha1", "BBC News", "CNN Brasil"),
-    title = c("J1", "J2", "F1", "B1", "C1"),
+    id = c("j1", "j2", "f1", "i1", "u1", "b1", "c1"),
+    source = c("J3News", "J3News", "Folha1", "IFF", "UENF", "BBC News", "CNN Brasil"),
+    title = c("J1", "J2", "F1", "I1", "U1", "B1", "C1"),
     excerpt = "",
-    published_at = lubridate::ymd_hms(rep("2026-07-05 10:00:00", 5), tz = "America/Sao_Paulo"),
-    score = c(90, 88, 43, 42, 41),
+    published_at = lubridate::ymd_hms(rep("2026-07-05 10:00:00", 7), tz = "America/Sao_Paulo"),
+    score = c(90, 88, 43, 44, 45, 42, 41),
     topic = "interesse público",
     justification = "teste",
     discard_reason = NA_character_
@@ -68,9 +70,9 @@ test_that("selection protects one relevant item per source before filling by sco
   cfg$source_min_score <- 40
   cfg$min_news_per_source <- 1
   cfg$news_per_source <- 4
-  cfg$max_selected <- 4
+  cfg$max_selected <- 6
   selected <- select_for_clipping(ranked, cfg)
-  expect_setequal(selected$source, c("J3News", "Folha1", "BBC News", "CNN Brasil"))
+  expect_setequal(selected$source, c("J3News", "Folha1", "IFF", "UENF", "BBC News", "CNN Brasil"))
 })
 
 test_that("dates parse with timezone and respect seven day window", {
@@ -79,6 +81,8 @@ test_that("dates parse with timezone and respect seven day window", {
   start <- now - lubridate::days(7)
   expect_true(is_in_window(parse_datetime_sao("2026-07-05T18:09:44-03:00", tz), start, now + lubridate::hours(1)))
   expect_true(is_in_window(parse_datetime_sao("Sun, 05 Jul 2026 19:22:47 GMT", tz), start, now))
+  expect_true(is_in_window(parse_datetime_sao("05/07/2026", tz, date_only_hour = 12), start, now))
+  expect_true(is_in_window(parse_iff_datetime("05/07/2026", "13h45", tz), start, now))
   expect_false(is_in_window(parse_datetime_sao("2026-06-20T10:00:00-03:00", tz), start, now))
   expect_true(is.na(parse_datetime_sao("", tz)))
 })
@@ -120,6 +124,7 @@ test_that("source failures are explicit and all-source failure is critical", {
   cfg <- load_config(dry_run = TRUE, now = lubridate::ymd_hms("2026-07-05 18:00:00", tz = "America/Sao_Paulo"))
   failed <- collect_source_safely("Fonte", function(config) stop("boom", call. = FALSE), cfg)
   expect_equal(failed$status, "failed")
-  status_tbl <- tibble::tibble(source = source_order(), status = rep("failed", 4))
+  expect_true(all(c("IFF", "UENF") %in% source_order()))
+  status_tbl <- tibble::tibble(source = source_order(), status = rep("failed", length(source_order())))
   expect_false(any_source_collected(status_tbl))
 })

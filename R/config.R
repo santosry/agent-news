@@ -68,6 +68,8 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
     max_selected = as.integer(Sys.getenv("MAX_SELECTED_NEWS", "16")),
     source_timeout = as.integer(Sys.getenv("SOURCE_TIMEOUT_SECONDS", "20")),
     j3_max_pages = as.integer(Sys.getenv("J3_MAX_PAGES", "20")),
+    iff_max_pages = as.integer(Sys.getenv("IFF_MAX_PAGES", "5")),
+    uenf_max_pages = as.integer(Sys.getenv("UENF_MAX_PAGES", "5")),
     cnn_max_pages = as.integer(Sys.getenv("CNN_MAX_PUBLIC_PAGES", "4")),
     output_dir = Sys.getenv("OUTPUT_DIR", "outputs"),
     gmail_token_path = Sys.getenv("GMAIL_TOKEN_PATH", "secrets/gmailr-token.rds"),
@@ -79,5 +81,5 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
 }
 
 source_order <- function() {
-  c("J3News", "Folha1", "BBC News", "CNN Brasil")
+  c("J3News", "Folha1", "IFF", "UENF", "BBC News", "CNN Brasil")
 }

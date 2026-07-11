@@ -55,7 +55,7 @@ Coberturas substantivamente distintas podem permanecer quando a similaridade fic
 
 ## E-mail
 
-O e-mail é HTML, sem JavaScript e com CSS inline. O período é apresentado em Horário de Brasília, implementado tecnicamente como `America/Sao_Paulo`. O topo contém a seção `Ryan, leia estas 3`, com as três notícias mais relevantes da semana. Depois, as notícias aparecem agrupadas por:
+O e-mail é HTML, sem JavaScript e com CSS inline. O período é apresentado em Horário de Brasília, implementado tecnicamente como `America/Sao_Paulo`. O topo contém a seção `Leia estas 3 primeiro`, com as três notícias mais relevantes da semana. Depois, as notícias aparecem agrupadas por:
 
 1. J3News
 2. Folha1
@@ -105,7 +105,7 @@ OPENAI_RANK_MODEL=gpt-5.4-mini
 OPENAI_SUMMARY_MODEL=gpt-5.5
 ```
 
-Sem `OPENAI_API_KEY`, o modo `DRY_RUN=true` usa ranking e resumo heurísticos apenas para validar coleta, HTML e auditoria. Para executar de verdade sem OpenAI, defina `ALLOW_NO_OPENAI=true`; nesse caso o agente usa ranking determinístico e resumo baseado no trecho/conteúdo público coletado, sem chamar IA externa.
+Sem `OPENAI_API_KEY`, o modo `DRY_RUN=true` usa ranking e resumo determinísticos para validar coleta, HTML e auditoria. Para executar de verdade sem OpenAI, defina `ALLOW_NO_OPENAI=true`; nesse caso o agente busca o texto público das notícias selecionadas, gera resumo baseado no conteúdo disponível e escreve uma justificativa editorial sem expor detalhes técnicos no e-mail.
 
 ## Gmail
 

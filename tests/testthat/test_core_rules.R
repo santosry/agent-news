@@ -51,6 +51,30 @@ test_that("heuristic ranking matches whole normalized terms", {
   expect_equal(ranked$topic[ranked$id == "sus"], "saúde pública")
   expect_equal(ranked$topic[ranked$id == "uenf"], "academia e instituições públicas")
   expect_gt(ranked$score[ranked$id == "uenf"], ranked$score[ranked$id == "crime"])
+  expect_false(any(stringr::str_detect(ranked$justification, "OPENAI_API_KEY|Ranking heur")))
+  expect_true(all(nchar(ranked$justification) > 40))
+})
+
+test_that("deterministic fallback summary is editorial, not technical", {
+  item <- tibble::tibble(
+    id = "uenf",
+    source = "UENF",
+    title = "UENF abre inscrições para workshop de nanotecnologia",
+    excerpt = "Evento reúne pesquisa, inovação e oportunidades acadêmicas.",
+    published_at = lubridate::ymd_hms("2026-07-05 10:00:00", tz = "America/Sao_Paulo"),
+    score = 90,
+    topic = "academia e instituições públicas",
+    justification = "teste",
+    discard_reason = NA_character_
+  )
+  out <- fallback_summary(
+    item,
+    "A UENF abriu inscrições para um workshop interdisciplinar de nanotecnologia e inovação. A programação reúne pesquisadores, estudantes e atividades ligadas a desenvolvimento científico regional."
+  )
+  expect_match(out$summary, "UENF abriu inscrições", fixed = TRUE)
+  expect_match(out$why_matters, "produção científica", fixed = TRUE)
+  expect_false(stringr::str_detect(out$why_matters, "OPENAI_API_KEY|heur"))
+  expect_false(stringr::str_detect(out$caveat, "chamada à OpenAI|OPENAI_API_KEY"))
 })
 
 test_that("selection protects one relevant item per source before filling by score", {

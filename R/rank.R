@@ -143,8 +143,38 @@ heuristic_rank <- function(items) {
         has_any_normalized_term(text, c("campos", "goytacazes", "norte fluminense")) ~ "Campos/Norte Fluminense",
         TRUE ~ "interesse público"
       ),
-      justification = "Ranking heurístico determinístico usado sem OPENAI_API_KEY."
+      justification = heuristic_justification(.data$source, .data$topic, text)
     )
+}
+
+heuristic_justification <- function(source, topic, text) {
+  purrr::pmap_chr(
+    list(source = source, topic = topic, text = text),
+    function(source, topic, text) {
+      if (source %in% c("IFF", "UENF")) {
+        if (has_any_normalized_term(text, c("pesquisa", "inovacao", "metodologia", "laboratorio", "science", "research"))) {
+          return("Acompanha produção científica e tecnológica regional, com potencial de gerar parcerias, agendas de pesquisa e oportunidades acadêmicas.")
+        }
+        if (has_any_normalized_term(text, c("edital", "inscricao", "vaga", "monitoria", "bolsa", "mestrado", "doutorado", "concurso"))) {
+          return("Reúne prazos e oportunidades acadêmicas que podem afetar estudantes, docentes, técnicos e grupos de pesquisa.")
+        }
+        return("Ajuda a acompanhar decisões e movimentos institucionais de uma fonte acadêmica estratégica para o Norte Fluminense.")
+      }
+      if (identical(topic, "saúde pública")) {
+        return("Tem relevância sanitária porque pode afetar acesso a serviços, prevenção, risco populacional ou organização da rede de saúde.")
+      }
+      if (identical(topic, "economia")) {
+        return("Ajuda a interpretar emprego, atividade econômica, arrecadação, investimentos ou decisões que afetam a região e o setor público.")
+      }
+      if (identical(topic, "meio ambiente")) {
+        return("Tem interesse público por envolver risco ambiental, clima, energia, território ou impactos sobre saúde e infraestrutura.")
+      }
+      if (identical(topic, "Campos/Norte Fluminense")) {
+        return("É relevante para acompanhar decisões, eventos e serviços com efeito direto em Campos dos Goytacazes e no Norte Fluminense.")
+      }
+      "Entra no radar por ter potencial de afetar decisões públicas, institucionais ou acadêmicas na semana."
+    }
+  )
 }
 
 has_normalized_term <- function(text, term) {

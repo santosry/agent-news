@@ -23,13 +23,14 @@ render_email_html <- function(news, status_tbl, config) {
 
     cards <- purrr::map_chr(seq_len(nrow(source_news)), function(i) {
       item <- source_news[i, ]
+      caveat_block <- render_caveat_block(item$caveat)
       glue::glue(
         "<article style='border-top:1px solid #e5e7eb;padding:18px 0'>",
         "<h3 style='font-size:18px;margin:0 0 6px;color:#111827'><a href='{htmltools::htmlEscape(item$url)}' style='color:#111827;text-decoration:none'>{htmltools::htmlEscape(item$title_final)}</a></h3>",
         "<p style='margin:0 0 10px;color:#6b7280;font-size:13px'>{item$source} &middot; {format(item$published_at, '%d/%m/%Y')} &middot; {htmltools::htmlEscape(item$topic)} &middot; escore {round(item$score)}</p>",
         "<p style='margin:0 0 10px'><strong>Resumo:</strong> {htmltools::htmlEscape(item$summary)}</p>",
         "<p style='margin:0 0 10px'><strong>Por que importa:</strong> {htmltools::htmlEscape(item$why_matters)}</p>",
-        "<p style='margin:0 0 10px'><strong>Ressalva:</strong> {htmltools::htmlEscape(item$caveat)}</p>",
+        caveat_block,
         "<p style='margin:0'><a href='{htmltools::htmlEscape(item$url)}' style='color:#b91c1c;text-decoration:underline'>Ler na fonte original</a></p>",
         "</article>"
       )
@@ -50,7 +51,7 @@ render_email_html <- function(news, status_tbl, config) {
         "<li style='margin:0 0 12px'>",
         "<a href='{htmltools::htmlEscape(item$url)}' style='color:#111827;font-weight:bold;text-decoration:none'>{htmltools::htmlEscape(item$title_final)}</a>",
         "<br><span style='color:#6b7280'>{item$source}</span>",
-        "<br><span>{htmltools::htmlEscape(item$justification)}</span>",
+        "<br><span>{htmltools::htmlEscape(item$why_matters)}</span>",
         "</li>"
       )
     }), collapse = "\n")
@@ -67,7 +68,7 @@ render_email_html <- function(news, status_tbl, config) {
     "<h1 style='font-size:24px;margin:0 0 4px;color:#111827'>Radar semanal de not\u00edcias</h1>",
     "<p style='margin:0 0 24px;color:#6b7280'>Per\u00edodo observado: ", period, "</p>",
     "<section style='background:#f3f4f6;border-left:4px solid #b91c1c;padding:16px;margin:0 0 24px'>",
-    "<h2 style='font-size:20px;margin:0 0 12px;color:#111827'>Ryan, leia estas 3</h2>",
+    "<h2 style='font-size:20px;margin:0 0 12px;color:#111827'>Leia estas 3 primeiro</h2>",
     if (nrow(top) > 0) paste0("<ol style='padding-left:20px;margin:0'>", top_block, "</ol>") else top_block,
     "</section>",
     paste(source_blocks, collapse = "\n"),
@@ -80,9 +81,16 @@ render_email_html <- function(news, status_tbl, config) {
 
 methodology_note <- function(config) {
   if (isTRUE(config$allow_no_openai) && !nzchar(config$openai_api_key)) {
-    return("Nota metodol\u00f3gica: esta execu\u00e7\u00e3o foi realizada sem OpenAI API key; a sele\u00e7\u00e3o usou regras determin\u00edsticas de relev\u00e2ncia sobre o material p\u00fablico coletado. Consulte as fontes prim\u00e1rias para decis\u00f5es cr\u00edticas, uso cient\u00edfico ou confirma\u00e7\u00e3o de detalhes.")
+    return("Nota metodol\u00f3gica: sele\u00e7\u00e3o autom\u00e1tica feita por regras editoriais reproduz\u00edveis a partir do material p\u00fablico coletado. Consulte as fontes prim\u00e1rias para decis\u00f5es cr\u00edticas, uso cient\u00edfico ou confirma\u00e7\u00e3o de detalhes.")
   }
   "Nota metodol\u00f3gica: a sele\u00e7\u00e3o foi realizada por IA a partir do material p\u00fablico coletado. Consulte as fontes prim\u00e1rias para decis\u00f5es cr\u00edticas, uso cient\u00edfico ou confirma\u00e7\u00e3o de detalhes."
+}
+
+render_caveat_block <- function(caveat) {
+  caveat <- clean_text(caveat %||% "")
+  if (is.na(caveat) || !nzchar(caveat)) return("")
+  if (stringr::str_detect(caveat, stringr::regex("sem ressalva|nenhuma ressalva|sem limita", ignore_case = TRUE))) return("")
+  glue::glue("<p style='margin:0 0 10px'><strong>Observação:</strong> {htmltools::htmlEscape(caveat)}</p>")
 }
 
 source_empty_message <- function(status) {

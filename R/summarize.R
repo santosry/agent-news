@@ -32,7 +32,7 @@ summarize_selected <- function(selected, config) {
       if (!config$dry_run && !isTRUE(config$allow_no_openai)) {
         stop("OPENAI_API_KEY is required outside dry run unless ALLOW_NO_OPENAI=true.", call. = FALSE)
       }
-      article_text <- item$excerpt[[1]]
+      article_text <- fetch_article_text(item)
       out <- fallback_summary(item, article_text)
     } else {
       article_text <- fetch_article_text(item)
@@ -86,16 +86,92 @@ summarize_one_with_openai <- function(item, article_text, config) {
 }
 
 fallback_summary <- function(item, article_text) {
-  basis <- if (nzchar(article_text)) article_text else item$excerpt[[1]]
-  summary <- clean_text(substr(basis, 1, 600))
-  if (!nzchar(summary)) summary <- "Resumo indisponível no modo determinístico sem OPENAI_API_KEY."
+  basis <- prepare_deterministic_text(article_text %||% item$excerpt[[1]])
+  if (!nzchar(basis)) basis <- prepare_deterministic_text(item$excerpt[[1]])
+  summary <- deterministic_summary_text(basis, item$title[[1]])
   list(
     title_final = item$title[[1]],
     topic = item$topic[[1]],
     summary = summary,
-    why_matters = item$justification[[1]],
-    caveat = "Resumo gerado sem chamada à OpenAI; consulte a fonte original antes de usar a informação."
+    why_matters = deterministic_why_matters(item, basis),
+    caveat = deterministic_caveat(item, basis)
   )
+}
+
+prepare_deterministic_text <- function(text) {
+  text <- clean_text(text %||% "")
+  if (is.na(text)) return("")
+  text <- stringr::str_remove(text, "O post .* apareceu primeiro em .*")
+  text <- stringr::str_remove(text, "The post .* appeared first on .*")
+  stringr::str_squish(text)
+}
+
+deterministic_summary_text <- function(text, title) {
+  text <- prepare_deterministic_text(text)
+  if (!nzchar(text)) return(clean_text(title))
+  sentences <- unlist(stringr::str_split(text, "(?<=[.!?])\\s+"), use.names = FALSE)
+  sentences <- sentences[nchar(sentences) >= 35]
+  summary <- if (length(sentences) > 0) {
+    paste(utils::head(sentences, 2), collapse = " ")
+  } else {
+    text
+  }
+  trim_to_words(summary, 620)
+}
+
+trim_to_words <- function(text, max_chars = 620) {
+  text <- clean_text(text)
+  if (is.na(text) || nchar(text) <= max_chars) return(text %||% "")
+  clipped <- substr(text, 1, max_chars)
+  clipped <- stringr::str_remove(clipped, "\\s+\\S*$")
+  paste0(clipped, "...")
+}
+
+deterministic_why_matters <- function(item, text) {
+  source <- item$source[[1]]
+  topic <- item$topic[[1]]
+  normalized <- normalize_title(paste(item$title[[1]], item$excerpt[[1]], text))
+
+  if (source %in% c("IFF", "UENF")) {
+    if (has_any_normalized_term(normalized, c("edital", "inscricao", "vaga", "monitoria", "bolsa", "mestrado", "doutorado", "concurso", "resultado"))) {
+      return("Interessa diretamente à comunidade acadêmica porque envolve prazos, oportunidades, seleção, editais ou resultados que podem orientar decisões de estudo, trabalho e pesquisa.")
+    }
+    if (has_any_normalized_term(normalized, c("pesquisa", "inovacao", "metodologia", "nanotecnologia", "laboratorio", "extensao", "tecnologia"))) {
+      return("Ajuda a mapear a produção científica, tecnológica e extensionista da região, além de possíveis agendas de colaboração entre universidade, setor público e sociedade.")
+    }
+    return("Mantém no radar movimentos institucionais de IFF e UENF, duas instituições centrais para ensino, pesquisa, extensão e desenvolvimento regional.")
+  }
+
+  if (identical(topic, "saúde pública")) {
+    return("Importa porque pode afetar prevenção, acesso a serviços, organização da rede de saúde ou risco sanitário para grupos populacionais específicos.")
+  }
+  if (identical(topic, "economia")) {
+    return("Importa porque ajuda a acompanhar emprego, arrecadação, investimento, atividade empresarial e decisões que podem alterar o cenário econômico local ou nacional.")
+  }
+  if (identical(topic, "meio ambiente")) {
+    return("Importa porque envolve clima, energia, território, poluição ou riscos ambientais com possíveis efeitos sobre saúde, infraestrutura e gestão pública.")
+  }
+  if (identical(topic, "Campos/Norte Fluminense")) {
+    return("Importa porque trata de decisão, serviço ou evento com efeito direto sobre Campos dos Goytacazes e o Norte Fluminense.")
+  }
+  if (nzchar(item$justification[[1]]) && !stringr::str_detect(item$justification[[1]], "OPENAI_API_KEY|heurístico")) {
+    return(item$justification[[1]])
+  }
+  "Importa porque pode influenciar decisões públicas, acadêmicas ou institucionais ao longo da semana."
+}
+
+deterministic_caveat <- function(item, text) {
+  normalized <- normalize_title(paste(item$title[[1]], item$excerpt[[1]], text))
+  if (!nzchar(text) || nchar(text) < 180) {
+    return("Material público disponível é curto; há pouco contexto além do título e da chamada.")
+  }
+  if (has_any_normalized_term(normalized, c("edital", "inscricao", "homologacao", "resultado", "concurso", "monitoria", "bolsa"))) {
+    return("Para prazos, requisitos e documentação, vale conferir o comunicado ou edital original.")
+  }
+  if (has_any_normalized_term(normalized, c("pesquisa", "estudo", "metodologia", "laboratorio", "nanotecnologia"))) {
+    return("Detalhes metodológicos e evidências técnicas devem ser conferidos na publicação ou fonte original citada pela instituição.")
+  }
+  ""
 }
 
 fetch_article_text <- function(item) {

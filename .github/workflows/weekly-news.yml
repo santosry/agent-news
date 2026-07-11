@@ -2,8 +2,8 @@ name: Weekly news clipping
 
 "on":
   schedule:
-    - cron: '0 8 * * 6'
-      timezone: 'America/Sao_Paulo'
+    # GitHub Actions schedules use UTC. 11:00 UTC = 08:00 America/Sao_Paulo.
+    - cron: '0 11 * * 6'
   workflow_dispatch:
     inputs:
       dry_run:

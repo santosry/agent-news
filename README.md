@@ -207,7 +207,7 @@ Artifacts gerados:
 
 O workflow está em `.github/workflows/weekly-news.yml`.
 
-- Agendamento: sábado às 08:00 no Horário de Brasília (`America/Sao_Paulo`).
+- Agendamento: sábado às 08:00 no Horário de Brasília (`America/Sao_Paulo`), implementado no GitHub Actions como `cron: '0 11 * * 6'` porque o agendamento do GitHub usa UTC.
 - `workflow_dispatch`: execução manual com opção `dry_run`.
 - Restaura dependências pelo `renv.lock`.
 - Usa GitHub Actions fixadas por SHA de commit.

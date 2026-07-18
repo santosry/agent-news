@@ -22,6 +22,19 @@ test_that("no-key production mode is explicit", {
   expect_equal(cfg$email_transport, "outlook")
 })
 
+test_that("GitHub Actions schedule includes Brasilia Saturday and Wednesday runs", {
+  workflow_path <- file.path("..", "..", ".github", "workflows", "weekly-news.yml")
+  if (!file.exists(workflow_path)) {
+    workflow_path <- file.path(".github", "workflows", "weekly-news.yml")
+  }
+  workflow <- yaml::read_yaml(workflow_path)
+  crons <- purrr::map_chr(workflow[["on"]][["schedule"]], "cron")
+
+  expect_true("0 11 * * 6" %in% crons)
+  expect_true("0 20 * * 3" %in% crons)
+  expect_equal(workflow$jobs$`weekly-news`$env$NEWS_TZ, "America/Sao_Paulo")
+})
+
 test_that("PowerShell command encoding is stable for Outlook transport", {
   encoded <- encode_powershell_command("Write-Output 'ok'")
   decoded <- jsonlite::base64_dec(encoded)

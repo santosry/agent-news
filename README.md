@@ -142,7 +142,7 @@ Cadastre no repositório:
 - `GMAILR_KEY`: obrigatório para envio real pelo GitHub Actions.
 - `GMAILR_TOKEN_ENC_B64`: obrigatório para envio real pelo GitHub Actions.
 
-O workflow publicado define `ALLOW_NO_OPENAI=true` por padrão, então a execução semanal consegue coletar, selecionar, resumir de forma determinística e gerar artifacts sem chave da OpenAI. Para envio real pelo Gmail no GitHub Actions, o token Gmail criptografado continua obrigatório.
+O workflow publicado define `ALLOW_NO_OPENAI=true` por padrão, então a execução agendada consegue coletar, selecionar, resumir de forma determinística e gerar artifacts sem chave da OpenAI. Para envio real pelo Gmail no GitHub Actions, o token Gmail criptografado continua obrigatório.
 
 Não publique `oauth_client.json`, `.Renviron`, tokens ou arquivos em `secrets/`. Não crie valores falsos.
 
@@ -208,10 +208,11 @@ Artifacts gerados:
 O workflow está em `.github/workflows/weekly-news.yml`.
 
 - Agendamento: sábado às 08:00 no Horário de Brasília (`America/Sao_Paulo`), implementado no GitHub Actions como `cron: '0 11 * * 6'` porque o agendamento do GitHub usa UTC.
+- Agendamento adicional: quarta-feira às 17:00 no Horário de Brasília (`America/Sao_Paulo`), implementado como `cron: '0 20 * * 3'`.
 - `workflow_dispatch`: execução manual com opção `dry_run`.
 - Restaura dependências pelo `renv.lock`.
 - Usa GitHub Actions fixadas por SHA de commit.
-- Valida sintaxe R, workflow YAML, ausência de secrets, testes e benchmark antes do agente.
+- Valida sintaxe R, workflow YAML, ausência de secrets, secrets de envio real, testes e benchmark antes do agente.
 - Publica HTML, CSV, JSON, auditoria, relatório de execução e benchmark em artifacts da execução.
 - Não faz commit automático dos resultados semanais.
 
@@ -244,5 +245,5 @@ A auditoria guarda metadados, escore, tema, seleção e motivo básico de descar
 - `UENF` sem itens: verifique o feed `https://uenf.br/portal/categoria/noticias/feed/` e as páginas `https://uenf.br/portal/noticias/`.
 - `BBC News` sem itens: verifique status dos feeds `feeds.bbci.co.uk` e redirects.
 - `CNN Brasil` sem itens antigos: reduza ou aumente `CNN_MAX_PUBLIC_PAGES`; o coletor para quando encontra páginas fora da janela.
-- Gmail falha em Actions: confirme `GMAILR_KEY` e `GMAILR_TOKEN_ENC_B64`.
+- Gmail falha em Actions ou e-mail não chega no horário esperado: confirme que Actions está habilitado no repositório e que os secrets `GMAILR_KEY` e `GMAILR_TOKEN_ENC_B64` existem. Sem esses dois secrets, a execução agendada não consegue enviar e-mail real.
 - Envio ausente em execução manual: confirme se `dry_run` está desmarcado.

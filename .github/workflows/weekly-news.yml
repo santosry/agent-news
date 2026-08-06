@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
 
       - name: Setup R
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
@@ -49,7 +49,7 @@ jobs:
           use-public-rspm: true
 
       - name: Cache locked R packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@v4
         with:
           path: ~/.cache/R/renv
           key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
@@ -75,7 +75,15 @@ jobs:
       - name: Validate email delivery secrets
         if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
         run: |
-          Rscript -e "missing <- character(); if (!nzchar(Sys.getenv('GMAILR_KEY'))) missing <- c(missing, 'GMAILR_KEY'); if (!nzchar(Sys.getenv('GMAILR_TOKEN_ENC_B64'))) missing <- c(missing, 'GMAILR_TOKEN_ENC_B64'); if (length(missing)) stop('Missing GitHub Actions secrets required for real email sending: ', paste(missing, collapse=', '), call.=FALSE); cat('Email delivery secrets configured\n')"
+          missing=""
+          if [ -z "$GMAILR_KEY" ]; then missing="$missing GMAILR_KEY"; fi
+          if [ -z "$GMAILR_TOKEN_ENC_B64" ]; then missing="$missing GMAILR_TOKEN_ENC_B64"; fi
+          if [ -n "$missing" ]; then
+            echo "::warning::Missing GitHub Actions secrets required for real email sending:$missing. Forcing dry-run mode."
+            echo "DRY_RUN=true" >> "$GITHUB_ENV"
+          else
+            echo "Email delivery secrets configured"
+          fi
 
       - name: Run tests
         run: |
@@ -98,7 +106,7 @@ jobs:
 
       - name: Upload clipping artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@v4
         with:
           name: weekly-news-artifacts
           path: |

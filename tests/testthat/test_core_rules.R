@@ -12,13 +12,13 @@ test_that("recipient parsing normalizes, validates, and deduplicates addresses",
 test_that("no-key production mode is explicit", {
   withr::local_envvar(c(
     DRY_RUN = "false",
-    ALLOW_NO_OPENAI = "true",
+    ALLOW_NO_DEEPSEEK = "true",
     EMAIL_TRANSPORT = "outlook",
-    OPENAI_API_KEY = ""
+    DEEPSEEK_API_KEY = ""
   ))
   cfg <- load_config()
   expect_false(cfg$dry_run)
-  expect_true(cfg$allow_no_openai)
+  expect_true(cfg$allow_no_deepseek)
   expect_equal(cfg$email_transport, "outlook")
 })
 
@@ -64,7 +64,7 @@ test_that("heuristic ranking matches whole normalized terms", {
   expect_equal(ranked$topic[ranked$id == "sus"], "saúde pública")
   expect_equal(ranked$topic[ranked$id == "uenf"], "academia e instituições públicas")
   expect_gt(ranked$score[ranked$id == "uenf"], ranked$score[ranked$id == "crime"])
-  expect_false(any(stringr::str_detect(ranked$justification, "OPENAI_API_KEY|Ranking heur")))
+  expect_false(any(stringr::str_detect(ranked$justification, "DEEPSEEK_API_KEY|Ranking heur")))
   expect_true(all(nchar(ranked$justification) > 40))
 })
 
@@ -86,8 +86,8 @@ test_that("deterministic fallback summary is editorial, not technical", {
   )
   expect_match(out$summary, "UENF abriu inscrições", fixed = TRUE)
   expect_match(out$why_matters, "produção científica", fixed = TRUE)
-  expect_false(stringr::str_detect(out$why_matters, "OPENAI_API_KEY|heur"))
-  expect_false(stringr::str_detect(out$caveat, "chamada à OpenAI|OPENAI_API_KEY"))
+  expect_false(stringr::str_detect(out$why_matters, "DEEPSEEK_API_KEY|heur"))
+  expect_false(stringr::str_detect(out$caveat, "chamada à DeepSeek|DEEPSEEK_API_KEY"))
 })
 
 test_that("selection protects one relevant item per source before filling by score", {

@@ -3,10 +3,10 @@ name: Scheduled news clipping
 "on":
   schedule:
     # GitHub Actions schedules use UTC.
-    # Saturday 11:00 UTC = Saturday 08:00 America/Sao_Paulo.
-    - cron: '0 11 * * 6'
-    # Wednesday 20:00 UTC = Wednesday 17:00 America/Sao_Paulo.
-    - cron: '0 20 * * 3'
+    # Wednesday 10:00 UTC = Wednesday 07:00 America/Sao_Paulo.
+    - cron: '0 10 * * 3'
+    # Saturday 10:00 UTC = Saturday 07:00 America/Sao_Paulo.
+    - cron: '0 10 * * 6'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -30,8 +30,8 @@ jobs:
     env:
       NEWS_TZ: America/Sao_Paulo
       NEWS_TIMEZONE_LABEL: Horário de Brasília
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ALLOW_NO_OPENAI: ${{ vars.ALLOW_NO_OPENAI || 'true' }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      ALLOW_NO_DEEPSEEK: ${{ vars.ALLOW_NO_DEEPSEEK || 'true' }}
       EMAIL_TRANSPORT: gmailr
       GMAILR_KEY: ${{ secrets.GMAILR_KEY }}
       GMAILR_TOKEN_ENC_B64: ${{ secrets.GMAILR_TOKEN_ENC_B64 }}
@@ -59,6 +59,16 @@ jobs:
       - name: Restore locked R dependencies
         run: |
           Rscript -e "install.packages('renv', repos='https://cloud.r-project.org'); renv::restore(prompt = FALSE)"
+
+      - name: Setup Gmail OAuth from secrets
+        run: |
+          if [ -n "$GMAILR_KEY" ] && [ -n "$GMAILR_TOKEN_ENC_B64" ]; then
+            echo "$GMAILR_KEY" > /tmp/gmailr_key
+            echo "$GMAILR_TOKEN_ENC_B64" | base64 -d > secrets/gmailr-token.rds.enc 2>/dev/null || true
+            echo "Gmail token file created from secrets"
+          else
+            echo "Gmail secrets not configured. Email sending will be skipped."
+          fi
 
       - name: Validate R syntax
         run: |

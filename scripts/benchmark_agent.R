@@ -17,7 +17,7 @@ measure_stage <- function(name, expr) {
 }
 
 config <- load_config(dry_run = TRUE)
-config$openai_api_key <- ""
+config$deepseek_api_key <- ""
 config$max_candidates_per_source <- as.integer(Sys.getenv("BENCHMARK_MAX_CANDIDATES_PER_SOURCE", config$max_candidates_per_source))
 config$cnn_max_pages <- as.integer(Sys.getenv("BENCHMARK_CNN_MAX_PUBLIC_PAGES", config$cnn_max_pages))
 config$iff_max_pages <- as.integer(Sys.getenv("BENCHMARK_IFF_MAX_PAGES", config$iff_max_pages))

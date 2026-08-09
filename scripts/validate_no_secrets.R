@@ -16,6 +16,7 @@ scan_files <- scan_files[file.exists(scan_files)]
 patterns <- c(
   "sk-[A-Za-z0-9_-]{20,}",
   "OPENAI_API_KEY\\s*=\\s*(?![.]+)[A-Za-z0-9_-]{16,}",
+  "DEEPSEEK_API_KEY\\s*=\\s*(?![.]+)[A-Za-z0-9_-]{16,}",
   "GMAILR_KEY\\s*=\\s*(?![.]+)[A-Za-z0-9_-]{16,}",
   "\"client_secret\"\\s*:",
   "\"refresh_token\"\\s*:",

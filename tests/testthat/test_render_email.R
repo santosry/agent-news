@@ -29,8 +29,8 @@ test_that("email rendering includes priority section, grouped sources, and links
   expect_match(html, "Nota metod", fixed = TRUE)
 })
 
-test_that("email rendering declares deterministic method when OpenAI is disabled", {
-  withr::local_envvar(c(OPENAI_API_KEY = "", ALLOW_NO_OPENAI = "true"))
+test_that("email rendering declares deterministic method when DeepSeek is disabled", {
+  withr::local_envvar(c(DEEPSEEK_API_KEY = "", ALLOW_NO_DEEPSEEK = "true"))
   cfg <- load_config(dry_run = TRUE, now = lubridate::ymd_hms("2026-07-05 18:00:00", tz = "America/Sao_Paulo"))
   news <- tibble::tibble(
     id = "1",
@@ -48,7 +48,7 @@ test_that("email rendering declares deterministic method when OpenAI is disabled
   status <- tibble::tibble(source = source_order(), status = "ok", diagnostics = NA_character_)
   html <- render_email_html(news, status, cfg)
   expect_match(html, "regras editoriais", fixed = TRUE)
-  expect_no_match(html, "OpenAI API key", fixed = TRUE)
+  expect_no_match(html, "DeepSeek API key", fixed = TRUE)
   expect_no_match(html, "Ranking heur", fixed = TRUE)
   expect_no_match(html, "Ressalva:", fixed = TRUE)
 })

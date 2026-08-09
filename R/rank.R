@@ -28,15 +28,15 @@ rank_news <- function(items, config) {
       dplyr::mutate(score = numeric(), topic = character(), justification = character()))
   }
 
-  if (!openai_available(config)) {
-    if (!config$dry_run && !isTRUE(config$allow_no_openai)) {
-      stop("OPENAI_API_KEY is required outside dry run unless ALLOW_NO_OPENAI=true.", call. = FALSE)
+  if (!deepseek_available(config)) {
+    if (!config$dry_run && !isTRUE(config$allow_no_deepseek)) {
+      stop("DEEPSEEK_API_KEY is required outside dry run unless ALLOW_NO_DEEPSEEK=true.", call. = FALSE)
     }
-    log_warn("OPENAI_API_KEY missing. Using deterministic heuristic ranking.")
+    log_warn("DEEPSEEK_API_KEY missing. Using deterministic heuristic ranking.")
     return(heuristic_rank(items))
   }
 
-  log_info("Sending {nrow(items)} candidates to OpenAI ranking.")
+  log_info("Sending {nrow(items)} candidates to DeepSeek ranking.")
   chunks <- split(items, ceiling(seq_len(nrow(items)) / 30))
   ranked <- purrr::map_dfr(chunks, function(chunk) {
     payload <- chunk |>
@@ -52,9 +52,12 @@ rank_news <- function(items, config) {
       "You are an editorial relevance scorer for a weekly intelligence clipping.",
       "Score only the facts presented in the supplied title and excerpt.",
       "Do not invent facts. Do not change the source.",
-      "Prioritize public health, science, epidemiology, public policy, public management, SUS, economy, fiscal policy, infrastructure, environment, climate, air pollution, public-impact technology, AI, Rio de Janeiro, Campos dos Goytacazes, and Norte Fluminense.",
+      "Prioritize: public health, epidemiology, nursing, SUS, hospitals, vaccination, disease outbreaks, science, research, public policy, public management, education, higher education, basic education, professional education, fiscal policy, infrastructure, environment, climate, pollution, public-impact technology, AI, Rio de Janeiro, Campos dos Goytacazes, and Norte Fluminense.",
       "For J3News and Folha1, give high weight to Campos dos Goytacazes, Norte Fluminense, local administration, health, infrastructure, regional economy, and municipal policy.",
       "For IFF and UENF, give high weight to research, science, innovation, extension, graduate programs, academic opportunities, institutional decisions, public education, technology transfer, health, environment, and regional development.",
+      "For MEC, give high weight to educational policy, basic and higher education programs, PNE, ENEM, FIES, PROUNI, teacher training, educational inclusion, and school infrastructure.",
+      "For Ministério da Saúde, give high weight to SUS, public health policy, vaccination, disease control, primary care, specialized care, health surveillance, health funding, and health workforce.",
+      "For Cofen and Coren-RJ, give high weight to nursing, professional regulation, ethical guidelines, public health nursing, health workforce policy, and professional training.",
       "For BBC News and CNN Brasil, prioritize national and international facts with broad population, scientific, political, economic, environmental, or institutional impact.",
       "Strongly penalize gossip, celebrities, reality shows, astrology, routine sports, promotional content, and clickbait unless there is extraordinary public impact.",
       sep = "\n"
@@ -66,16 +69,16 @@ rank_news <- function(items, config) {
       sep = "\n\n"
     )
 
-    result <- openai_responses_json(
+    result <- deepseek_chat_completions(
       config = config,
       model = config$rank_model,
-      instructions = instructions,
-      input = input,
+      system_prompt = instructions,
+      user_prompt = input,
       schema_name = "news_ranking",
       schema = ranking_schema()
     )
 
-    out <- tibble::as_tibble(result$items)
+    out <- dplyr::bind_rows(result$items)
     validate_ranking_output(out, chunk)
   })
 
@@ -91,10 +94,10 @@ rank_news <- function(items, config) {
 validate_ranking_output <- function(out, input_items) {
   required <- c("id", "score", "topic", "justification")
   if (!all(required %in% names(out))) {
-    stop("OpenAI ranking schema missing fields.", call. = FALSE)
+    stop("DeepSeek ranking schema missing fields.", call. = FALSE)
   }
   if (!all(out$id %in% input_items$id)) {
-    stop("OpenAI ranking returned unknown ids.", call. = FALSE)
+    stop("DeepSeek ranking returned unknown ids.", call. = FALSE)
   }
   out |>
     dplyr::transmute(
@@ -117,7 +120,11 @@ heuristic_rank <- function(items) {
     "research", "scientist", "epidemiology", "vaccine", "climate", "heatwave",
     "environment", "pollution", "economy", "economic", "fiscal", "government",
     "policy", "infrastructure", "artificial intelligence", "technology", "deaths",
-    "excess deaths", "hospital", "disease", "emissions"
+    "excess deaths", "hospital", "disease", "emissions",
+    "enfermagem", "enfermeiro", "nursing", "nurse", "coren", "cofen",
+    "ideb", "enem", "fies", "prouni", "pne", "educacao basica", "ensino medio",
+    "ensino superior", "formacao docente", "educacao inclusiva", "ensino profissional",
+    "atencao primaria", "vigilancia", "saude mental", "saude indigena"
   )
   penalty_terms <- c(
     "celebridade", "bbb", "reality", "horoscopo", "famos", "futebol", "copa",

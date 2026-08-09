@@ -2,7 +2,7 @@ run_news_agent <- function(config = load_config()) {
   run_started_at <- Sys.time()
   log_info("Weekly news agent started. dry_run={config$dry_run}")
   log_info("Window: {format(config$window_start, '%Y-%m-%d %H:%M:%S %Z')} to {format(config$window_end, '%Y-%m-%d %H:%M:%S %Z')} ({config$timezone_label})")
-  log_info("Ranking model: {config$rank_model}; summary model: {config$summary_model}")
+  log_info("DeepSeek ranking model: {config$rank_model}; summary model: {config$summary_model}")
   log_info("Recipients: {paste(config$recipients, collapse = ', ')}")
 
   if (length(config$invalid_recipients) > 0) {
@@ -99,7 +99,11 @@ news_collectors <- function() {
     IFF = collect_iff,
     UENF = collect_uenf,
     `BBC News` = collect_bbc,
-    `CNN Brasil` = collect_cnn
+    `CNN Brasil` = collect_cnn,
+    Cofen = collect_cofen,
+    MEC = collect_mec,
+    `Ministério da Saúde` = collect_saude,
+    `Coren-RJ` = collect_coren
   )
 }
 

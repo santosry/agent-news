@@ -40,7 +40,7 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
   tz <- Sys.getenv("NEWS_TZ", "America/Sao_Paulo")
   dry <- dry_run %||% as_bool(Sys.getenv("DRY_RUN"), default = TRUE)
   now_tz <- lubridate::with_tz(now, tz)
-  lookback_days <- as.integer(Sys.getenv("NEWS_LOOKBACK_DAYS", "7"))
+  lookback_days <- as.integer(Sys.getenv("NEWS_LOOKBACK_DAYS", "30"))
   recipients <- parse_recipients(Sys.getenv("EMAIL_TO", ""))
 
   list(
@@ -55,11 +55,11 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
     recipients = recipients$valid,
     invalid_recipients = recipients$invalid,
     email_transport = tolower(Sys.getenv("EMAIL_TRANSPORT", "gmailr")),
-    openai_api_key = Sys.getenv("OPENAI_API_KEY", ""),
-    allow_no_openai = as_bool(Sys.getenv("ALLOW_NO_OPENAI"), default = FALSE),
-    rank_model = Sys.getenv("OPENAI_RANK_MODEL", "gpt-5.4-mini"),
-    summary_model = Sys.getenv("OPENAI_SUMMARY_MODEL", "gpt-5.5"),
-    openai_reasoning_effort = Sys.getenv("OPENAI_REASONING_EFFORT", "low"),
+    deepseek_api_key = Sys.getenv("DEEPSEEK_API_KEY", ""),
+    allow_no_deepseek = as_bool(Sys.getenv("ALLOW_NO_DEEPSEEK"), default = FALSE),
+    rank_model = Sys.getenv("DEEPSEEK_RANK_MODEL", "deepseek-chat"),
+    summary_model = Sys.getenv("DEEPSEEK_SUMMARY_MODEL", "deepseek-chat"),
+    deepseek_reasoning_effort = Sys.getenv("DEEPSEEK_REASONING_EFFORT", "low"),
     min_score = as.numeric(Sys.getenv("NEWS_MIN_SCORE", "55")),
     source_min_score = as.numeric(Sys.getenv("NEWS_SOURCE_MIN_SCORE", "40")),
     min_news_per_source = as.integer(Sys.getenv("NEWS_MIN_NEWS_PER_SOURCE", "1")),
@@ -81,5 +81,5 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
 }
 
 source_order <- function() {
-  c("J3News", "Folha1", "IFF", "UENF", "BBC News", "CNN Brasil")
+  c("J3News", "Folha1", "IFF", "UENF", "BBC News", "CNN Brasil", "Cofen", "MEC", "Ministério da Saúde", "Coren-RJ")
 }

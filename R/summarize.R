@@ -28,15 +28,15 @@ summarize_selected <- function(selected, config) {
   purrr::map_dfr(seq_len(nrow(selected)), function(i) {
     item <- selected[i, ]
 
-    if (!openai_available(config)) {
-      if (!config$dry_run && !isTRUE(config$allow_no_openai)) {
-        stop("OPENAI_API_KEY is required outside dry run unless ALLOW_NO_OPENAI=true.", call. = FALSE)
+    if (!deepseek_available(config)) {
+      if (!config$dry_run && !isTRUE(config$allow_no_deepseek)) {
+        stop("DEEPSEEK_API_KEY is required outside dry run unless ALLOW_NO_DEEPSEEK=true.", call. = FALSE)
       }
       article_text <- fetch_article_text(item)
       out <- fallback_summary(item, article_text)
     } else {
       article_text <- fetch_article_text(item)
-      out <- summarize_one_with_openai(item, article_text, config)
+      out <- summarize_one_with_deepseek(item, article_text, config)
     }
 
     item |>
@@ -51,7 +51,7 @@ summarize_selected <- function(selected, config) {
   })
 }
 
-summarize_one_with_openai <- function(item, article_text, config) {
+summarize_one_with_deepseek <- function(item, article_text, config) {
   instructions <- paste(
     "You write analytical news clipping summaries in Brazilian Portuguese.",
     "Use only the supplied article title, source, date, excerpt, and article text.",
@@ -75,11 +75,11 @@ summarize_one_with_openai <- function(item, article_text, config) {
 
   input <- jsonlite::toJSON(payload, auto_unbox = TRUE)
 
-  openai_responses_json(
+  deepseek_chat_completions(
     config = config,
     model = config$summary_model,
-    instructions = instructions,
-    input = input,
+    system_prompt = instructions,
+    user_prompt = input,
     schema_name = "news_summary",
     schema = summary_schema()
   )
@@ -154,7 +154,7 @@ deterministic_why_matters <- function(item, text) {
   if (identical(topic, "Campos/Norte Fluminense")) {
     return("Importa porque trata de decisão, serviço ou evento com efeito direto sobre Campos dos Goytacazes e o Norte Fluminense.")
   }
-  if (nzchar(item$justification[[1]]) && !stringr::str_detect(item$justification[[1]], "OPENAI_API_KEY|heurístico")) {
+  if (nzchar(item$justification[[1]]) && !stringr::str_detect(item$justification[[1]], "DEEPSEEK_API_KEY|heurístico")) {
     return(item$justification[[1]])
   }
   "Importa porque pode influenciar decisões públicas, acadêmicas ou institucionais ao longo da semana."

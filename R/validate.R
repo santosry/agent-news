@@ -34,8 +34,8 @@ validate_run_invariants <- function(all_items, ranked, selected, status_tbl, con
     errors <- c(errors, "production_run_without_valid_recipients")
   }
 
-  if (!config$dry_run && !openai_available(config) && !isTRUE(config$allow_no_openai)) {
-    errors <- c(errors, "production_run_without_openai_key")
+  if (!config$dry_run && !deepseek_available(config) && !isTRUE(config$allow_no_deepseek)) {
+    errors <- c(errors, "production_run_without_deepseek_key")
   }
 
   list(

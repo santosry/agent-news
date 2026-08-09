@@ -8,15 +8,15 @@ O Agent News é um **radar semanal de inteligência informacional**. Ele monitor
 
 ```mermaid
 graph TD
-  A[Agendador GitHub Actions] --> B[agent_news.R]
-  B --> C[Coleta de 10 Fontes]
-  C --> D[Deduplicação Exata + Fuzzy]
-  D --> E[Ranking por IA - DeepSeek]
-  E --> F[Seleção com Diversidade de Fontes]
-  F --> G[Geração de Resumos Analíticos]
-  G --> H[Renderização HTML - Compatível Gmail]
+  A[GitHub Actions] --> B[agent_news.R]
+  B --> C[Coleta 10 Fontes]
+  C --> D[Deduplicação]
+  D --> E[Ranking DeepSeek]
+  E --> F[Seleção Diversa]
+  F --> G[Geração Resumos]
+  G --> H[HTML Compatível Gmail]
   H --> I[Envio por E-mail]
-  H --> J[Artefatos: HTML, CSV, JSON]
+  H --> J[CSV / JSON / HTML]
 ```
 
 ## Por que este projeto existe?

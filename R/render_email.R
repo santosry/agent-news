@@ -90,6 +90,9 @@ render_email_html <- function(news, status_tbl, config) {
 
     paste(source_blocks, collapse = "\n"),
 
+    # Source status footer
+    render_status_table(status_tbl),
+
     "<div style='border-top:2px solid #e5e7eb;margin-top:32px;padding-top:18px;color:#9ca3af;font-size:12px;text-align:center'>",
     "Agent News &middot; Curadoria automatizada por IA &middot; ",
     format(config$now, "%d/%m/%Y %H:%M"),
@@ -117,6 +120,26 @@ source_empty_message <- function(status) {
     no_window_items = "Nenhuma not\u00edcia recente encontrada no per\u00edodo.",
     ok = "Fonte coletada, mas nenhuma not\u00edcia atingiu o limiar editorial.",
     "Sem not\u00edcia selecionada nesta execu\u00e7\u00e3o."
+  )
+}
+
+render_status_table <- function(status_tbl) {
+  if (nrow(status_tbl) == 0) return("")
+  rows <- purrr::map_chr(seq_len(nrow(status_tbl)), function(i) {
+    s <- status_tbl[i, ]
+    icon <- dplyr::case_when(
+      s$status == "ok" ~ "\u2705",
+      s$status %in% c("no_window_items", "no_valid_dates") ~ "\u26a0\ufe0f",
+      TRUE ~ "\u274c"
+    )
+    glue::glue("<tr><td style='padding:2px 8px;font-size:11px'>{icon}</td><td style='padding:2px 8px;font-size:11px'>{s$source}</td><td style='padding:2px 8px;font-size:11px;color:#6b7280'>{s$in_window_count} notícias</td></tr>")
+  })
+  paste0(
+    "<div style='margin-top:24px;padding:12px 16px;background:#f9fafb;border-radius:8px'>",
+    "<p style='margin:0 0 8px;font-size:13px;font-weight:600;color:#374151'>Status da coleta:</p>",
+    "<table style='border-collapse:collapse'>",
+    paste(rows, collapse = "\n"),
+    "</table></div>"
   )
 }
 

@@ -11,7 +11,15 @@ run_news_agent <- function(config = load_config()) {
 
   collectors <- news_collectors()
 
-  source_results <- purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
+  # Parallel collection when furrr is available
+  if (requireNamespace("furrr", quietly = TRUE) && length(collectors) > 1) {
+    future::plan(future::multisession, workers = min(6L, length(collectors)))
+    on.exit(future::plan(future::sequential), add = TRUE)
+    log_info("Collecting from {length(collectors)} sources in parallel")
+    source_results <- furrr::future_imap(collectors, ~ collect_source_safely(.y, .x, config))
+  } else {
+    source_results <- purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
+  }
   status_tbl <- source_status_table(source_results)
   all_items <- purrr::map_dfr(source_results, "items")
   if (!any_source_collected(status_tbl)) {

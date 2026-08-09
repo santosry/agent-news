@@ -25,17 +25,25 @@ summarize_selected <- function(selected, config) {
       ))
   }
 
+  # Article text cache to avoid re-fetching
+  text_cache <- new.env(parent = emptyenv())
+
   purrr::map_dfr(seq_len(nrow(selected)), function(i) {
     item <- selected[i, ]
+
+    # Use cached text if available, otherwise fetch and cache
+    cache_key <- item$url[[1]]
+    if (is.null(text_cache[[cache_key]])) {
+      text_cache[[cache_key]] <- fetch_article_text(item)
+    }
+    article_text <- text_cache[[cache_key]]
 
     if (!deepseek_available(config)) {
       if (!config$dry_run && !isTRUE(config$allow_no_deepseek)) {
         stop("DEEPSEEK_API_KEY is required outside dry run unless ALLOW_NO_DEEPSEEK=true.", call. = FALSE)
       }
-      article_text <- fetch_article_text(item)
       out <- fallback_summary(item, article_text)
     } else {
-      article_text <- fetch_article_text(item)
       out <- summarize_one_with_deepseek(item, article_text, config)
     }
 

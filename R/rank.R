@@ -37,7 +37,7 @@ rank_news <- function(items, config) {
   }
 
   log_info("Sending {nrow(items)} candidates to DeepSeek ranking.")
-  chunks <- split(items, ceiling(seq_len(nrow(items)) / 30))
+  chunks <- split(items, ceiling(seq_len(nrow(items)) / 40))
   ranked <- purrr::map_dfr(chunks, function(chunk) {
     payload <- chunk |>
       dplyr::transmute(

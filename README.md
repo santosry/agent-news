@@ -13,8 +13,8 @@ graph TD
   C --> D[Deduplicação Exata + Fuzzy]
   D --> E[Ranking por IA - DeepSeek]
   E --> F[Seleção com Diversidade de Fontes]
-  F --> G[Geração de Resumos Analíticos]
-  G --> H[Renderização HTML - Compatível Gmail]
+  F --> G[Geração de Resumos]
+  G --> H[Renderização HTML]
   H --> I[Envio por E-mail]
   H --> J[Artefatos: HTML, CSV, JSON]
 ```

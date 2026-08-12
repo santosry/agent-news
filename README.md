@@ -270,10 +270,12 @@ Após executar o script, configure os secrets no GitHub:
 
 | Nome do Secret | Valor |
 |---------------|-------|
+| `EMAIL_FROM` | Seu e-mail remetente (ex.: `seu.email@gmail.com`) |
+| `EMAIL_TO` | Destinatários separados por vírgula |
 | `GMAILR_KEY` | A chave de criptografia gerada |
 | `GMAILR_TOKEN_ENC_B64` | Conteúdo de `secrets/token_base64.txt` |
 | `GMAIL_OAUTH_B64` | Conteúdo de `secrets/oauth_client_b64.txt` (base64 do `oauth_client.json`) |
-| `DEEPSEEK_API_KEY` | Sua chave da API DeepSeek |
+| `DEEPSEEK_API_KEY` | Sua chave da API DeepSeek (opcional) |
 
 ### Passo 4: Testar envio local
 
@@ -358,6 +360,8 @@ O workflow está em `.github/workflows/weekly-news.yml`.
 
 | Secret | Obrigatório | Descrição |
 |--------|------------|-----------|
+| `EMAIL_FROM` | Para envio real | Remetente do e-mail |
+| `EMAIL_TO` | Para envio real | Destinatários separados por vírgula |
 | `DEEPSEEK_API_KEY` | Recomendado | Chave da API DeepSeek para ranking e resumo |
 | `GMAILR_KEY` | Para envio real | Chave de criptografia do token Gmail |
 | `GMAILR_TOKEN_ENC_B64` | Para envio real | Token Gmail criptografado em base64 |

@@ -34,6 +34,8 @@ jobs:
       ALLOW_NO_DEEPSEEK: ${{ vars.ALLOW_NO_DEEPSEEK || 'true' }}
       ALLOW_NO_OPENAI: ${{ vars.ALLOW_NO_DEEPSEEK || 'true' }}
       EMAIL_TRANSPORT: gmailr
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
       GMAILR_KEY: ${{ secrets.GMAILR_KEY }}
       GMAILR_TOKEN_ENC_B64: ${{ secrets.GMAILR_TOKEN_ENC_B64 }}
       GMAIL_OAUTH_B64: ${{ secrets.GMAIL_OAUTH_B64 }}
@@ -94,6 +96,8 @@ jobs:
         if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
         run: |
           missing=""
+          if [ -z "$EMAIL_FROM" ]; then missing="$missing EMAIL_FROM"; fi
+          if [ -z "$EMAIL_TO" ]; then missing="$missing EMAIL_TO"; fi
           if [ -z "$GMAILR_KEY" ]; then missing="$missing GMAILR_KEY"; fi
           if [ -z "$GMAILR_TOKEN_ENC_B64" ]; then missing="$missing GMAILR_TOKEN_ENC_B64"; fi
           if [ -z "$GMAIL_OAUTH_B64" ]; then missing="$missing GMAIL_OAUTH_B64"; fi

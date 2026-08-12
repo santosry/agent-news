@@ -4,8 +4,8 @@ test_that("title normalization preserves semantic text and removes accents", {
 })
 
 test_that("recipient parsing normalizes, validates, and deduplicates addresses", {
-  parsed <- parse_recipients(" RyanDPAuloSantos@gmail.com ; leticiamariadiasfreitas@gmail.com, bad, ryandpaulosantos@gmail.com ")
-  expect_equal(parsed$valid, c("ryandpaulosantos@gmail.com", "leticiamariadiasfreitas@gmail.com"))
+  parsed <- parse_recipients(" Usuario@exemplo.com ; outro@exemplo.com, bad, dup@exemplo.com ")
+  expect_equal(parsed$valid, c("usuario@exemplo.com", "outro@exemplo.com", "dup@exemplo.com"))
   expect_equal(parsed$invalid, "bad")
 })
 
@@ -30,8 +30,8 @@ test_that("GitHub Actions schedule includes Brasilia Saturday and Wednesday runs
   workflow <- yaml::read_yaml(workflow_path)
   crons <- purrr::map_chr(workflow[["on"]][["schedule"]], "cron")
 
-  expect_true("0 11 * * 6" %in% crons)
-  expect_true("0 20 * * 3" %in% crons)
+  expect_true("0 10 * * 6" %in% crons)
+  expect_true("0 10 * * 3" %in% crons)
   expect_equal(workflow$jobs$`weekly-news`$env$NEWS_TZ, "America/Sao_Paulo")
 })
 

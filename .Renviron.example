@@ -9,8 +9,8 @@ DEEPSEEK_RANK_MODEL=deepseek-chat
 DEEPSEEK_SUMMARY_MODEL=deepseek-chat
 DEEPSEEK_REASONING_EFFORT=low
 
-EMAIL_FROM=arquivosryansantos@gmail.com
-EMAIL_TO=ryandpaulosantos@gmail.com,leticiamariadiasfreitas@gmail.com
+EMAIL_FROM=seu.email@exemplo.com
+EMAIL_TO=seu.email@exemplo.com
 EMAIL_TRANSPORT=gmailr
 
 GMAILR_KEY=
@@ -19,11 +19,11 @@ GMAIL_OAUTH_CLIENT=oauth_client.json
 GMAIL_TOKEN_PATH=secrets/gmailr-token.rds
 GMAIL_ENCRYPTED_TOKEN_PATH=secrets/gmailr-token.rds.enc
 
-NEWS_MIN_SCORE=55
+NEWS_MIN_SCORE=45
 NEWS_SOURCE_MIN_SCORE=30
 NEWS_MIN_NEWS_PER_SOURCE=5
-NEWS_PER_SOURCE=6
-MAX_SELECTED_NEWS=40
+NEWS_PER_SOURCE=10
+MAX_SELECTED_NEWS=50
 MAX_CANDIDATES_PER_SOURCE=60
 J3_MAX_PAGES=20
 IFF_MAX_PAGES=5

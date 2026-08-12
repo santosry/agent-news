@@ -32,15 +32,17 @@ jobs:
       NEWS_TIMEZONE_LABEL: Horário de Brasília
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       ALLOW_NO_DEEPSEEK: ${{ vars.ALLOW_NO_DEEPSEEK || 'true' }}
+      ALLOW_NO_OPENAI: ${{ vars.ALLOW_NO_DEEPSEEK || 'true' }}
       EMAIL_TRANSPORT: gmailr
       GMAILR_KEY: ${{ secrets.GMAILR_KEY }}
       GMAILR_TOKEN_ENC_B64: ${{ secrets.GMAILR_TOKEN_ENC_B64 }}
+      GMAIL_OAUTH_B64: ${{ secrets.GMAIL_OAUTH_B64 }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
       RENV_PATHS_CACHE: ~/.cache/R/renv
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup R
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
@@ -49,7 +51,7 @@ jobs:
           use-public-rspm: true
 
       - name: Cache locked R packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/R/renv
           key: ${{ runner.os }}-renv-${{ hashFiles('renv.lock') }}
@@ -68,6 +70,12 @@ jobs:
             echo "Gmail token file created from secrets"
           else
             echo "Gmail secrets not configured. Email sending will be skipped."
+          fi
+          if [ -n "$GMAIL_OAUTH_B64" ]; then
+            echo "$GMAIL_OAUTH_B64" | base64 -d > oauth_client.json 2>/dev/null || true
+            echo "Gmail OAuth client restored from GMAIL_OAUTH_B64"
+          else
+            echo "GMAIL_OAUTH_B64 not set; token refresh will be unavailable if the access token expired."
           fi
 
       - name: Validate R syntax
@@ -88,6 +96,7 @@ jobs:
           missing=""
           if [ -z "$GMAILR_KEY" ]; then missing="$missing GMAILR_KEY"; fi
           if [ -z "$GMAILR_TOKEN_ENC_B64" ]; then missing="$missing GMAILR_TOKEN_ENC_B64"; fi
+          if [ -z "$GMAIL_OAUTH_B64" ]; then missing="$missing GMAIL_OAUTH_B64"; fi
           if [ -n "$missing" ]; then
             echo "::warning::Missing GitHub Actions secrets required for real email sending:$missing. Forcing dry-run mode."
             echo "DRY_RUN=true" >> "$GITHUB_ENV"
@@ -116,7 +125,7 @@ jobs:
 
       - name: Upload clipping artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: weekly-news-artifacts
           path: |

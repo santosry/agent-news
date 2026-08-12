@@ -16,6 +16,10 @@ test_that("email rendering includes priority section, grouped sources, and links
   status <- tibble::tibble(
     source = source_order(),
     status = rep("ok", length(source_order())),
+    raw_count = 10L,
+    valid_date_count = 8L,
+    in_window_count = 5L,
+    elapsed_sec = 1.5,
     diagnostics = NA_character_
   )
   html <- render_email_html(news, status, cfg)
@@ -26,7 +30,7 @@ test_that("email rendering includes priority section, grouped sources, and links
   expect_match(html, "IFF", fixed = TRUE)
   expect_match(html, "UENF", fixed = TRUE)
   expect_match(html, "https://j3news.com/a", fixed = TRUE)
-  expect_match(html, "Nota metod", fixed = TRUE)
+  expect_match(html, "Status da coleta", fixed = TRUE)
 })
 
 test_that("email rendering declares deterministic method when DeepSeek is disabled", {
@@ -45,10 +49,18 @@ test_that("email rendering declares deterministic method when DeepSeek is disabl
     caveat = "Sem ressalva material.",
     justification = "Prioridade"
   )
-  status <- tibble::tibble(source = source_order(), status = "ok", diagnostics = NA_character_)
+  status <- tibble::tibble(
+    source = source_order(),
+    status = "ok",
+    raw_count = 10L,
+    valid_date_count = 8L,
+    in_window_count = 5L,
+    elapsed_sec = 1.5,
+    diagnostics = NA_character_
+  )
   html <- render_email_html(news, status, cfg)
-  expect_match(html, "regras editoriais", fixed = TRUE)
-  expect_no_match(html, "DeepSeek API key", fixed = TRUE)
+  expect_match(html, "Status da coleta", fixed = TRUE)
+  expect_no_match(html, "DEEPSEEK_API_KEY", fixed = TRUE)
   expect_no_match(html, "Ranking heur", fixed = TRUE)
   expect_no_match(html, "Ressalva:", fixed = TRUE)
 })

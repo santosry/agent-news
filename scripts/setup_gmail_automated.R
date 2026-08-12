@@ -28,7 +28,7 @@ suppressPackageStartupMessages({
 })
 
 # ---- Configuration -----------------------------------------------------------
-email <- Sys.getenv("EMAIL_FROM", "arquivosryansantos@gmail.com")
+email <- Sys.getenv("EMAIL_FROM", "")
 client_path <- Sys.getenv("GMAIL_OAUTH_CLIENT", "oauth_client.json")
 token_path <- Sys.getenv("GMAIL_TOKEN_PATH", "secrets/gmailr-token.rds")
 encrypted_path <- Sys.getenv("GMAIL_ENCRYPTED_TOKEN_PATH", "secrets/gmailr-token.rds.enc")

@@ -1,4 +1,14 @@
 collect_coren <- function(config) {
+  # Strategy: WordPress REST API first, HTML scraping as fallback
+  rows <- collect_coren_api(config)
+  if (nrow(rows) == 0) {
+    log_info("Coren-RJ API returned no items, falling back to HTML scraping")
+    rows <- collect_coren_html(config)
+  }
+  finish_source_result("Coren-RJ", rows, raw_count = nrow(rows), config = config)
+}
+
+collect_coren_api <- function(config) {
   # Coren-RJ is WordPress — use REST API (no xml2 needed, avoids segfault)
   base <- "https://coren-rj.org.br/wp-json/wp/v2/posts"
   per_page <- 50L
@@ -52,11 +62,50 @@ collect_coren <- function(config) {
     rows[[page]] <- page_rows
 
     page_dates <- page_rows$published_at[!is.na(page_rows$published_at)]
-    if (length(page_dates) > 0 && max(page_dates) < config$window_start) {
-      break
-    }
+    if (length(page_dates) > 0 && max(page_dates) < config$window_start) break
   }
 
-  all_rows <- dplyr::bind_rows(rows)
-  finish_source_result("Coren-RJ", all_rows, raw_count = raw_count, config = config)
+  dplyr::bind_rows(rows)
+}
+
+collect_coren_html <- function(config) {
+  pages <- c("https://coren-rj.org.br/", "https://coren-rj.org.br/noticias/")
+  purrr::map(pages, function(page_url) {
+    tryCatch({
+      doc <- read_html_url(page_url, timeout = config$source_timeout)
+      links <- rvest::html_elements(doc, "a[href]")
+      href <- rvest::html_attr(links, "href")
+      title <- clean_text(rvest::html_text2(links))
+      url <- xml2::url_absolute(href, page_url)
+      news_pattern <- stringr::str_detect(url, "coren-rj[.]org[.]br/") & nzchar(title) & nchar(title) >= 25
+      url <- unique(url[news_pattern])
+      title <- title[news_pattern]
+
+      if (length(url) == 0) return(tibble::tibble())
+
+      unique_idx <- !duplicated(url)
+      url <- url[unique_idx]
+      title <- title[unique_idx]
+
+      purrr::map2_dfr(utils::head(url, 30), utils::head(title, 30), function(u, t) {
+        tibble::tibble(
+          id = stable_id("Coren-RJ", u),
+          source = "Coren-RJ",
+          title = t,
+          url = u,
+          published_at = as.POSIXct(NA, tz = config$timezone),
+          modified_at = as.POSIXct(NA),
+          date_kind = "published",
+          date_source = "html_fallback_no_date",
+          excerpt = "",
+          keywords = "",
+          raw_source = page_url,
+          discard_reason = NA_character_
+        )
+      })
+    }, error = function(e) {
+      log_warn("Coren-RJ HTML fallback failed for {page_url}: {conditionMessage(e)}")
+      tibble::tibble()
+    })
+  }) |> dplyr::bind_rows()
 }

@@ -2,7 +2,8 @@ collect_saude <- function(config) {
   # gov.br Saude uses the same Plone tileItem structure as MEC and IFF
   base_urls <- c(
     "https://www.gov.br/saude/pt-br/assuntos/noticias-ms",
-    "https://www.gov.br/saude/pt-br/assuntos/noticias"
+    "https://www.gov.br/saude/pt-br/assuntos/noticias",
+    "https://www.gov.br/saude/pt-br/assuntos/noticias/ultimas-noticias"
   )
 
   all_rows <- tibble::tibble()

@@ -8,7 +8,7 @@ as_bool <- function(x, default = FALSE) {
 }
 
 default_recipients <- function() {
-  c("ryandpaulosantos@gmail.com", "leticiamariadiasfreitas@gmail.com")
+  c("seu.email@exemplo.com")
 }
 
 parse_recipients <- function(value, default = default_recipients()) {
@@ -51,21 +51,21 @@ load_config <- function(dry_run = NULL, now = Sys.time()) {
     window_end = now_tz,
     lookback_days = lookback_days,
     dry_run = dry,
-    email_from = Sys.getenv("EMAIL_FROM", "ryandpaulosantos@gmail.com"),
+    email_from = Sys.getenv("EMAIL_FROM", ""),
     recipients = recipients$valid,
     invalid_recipients = recipients$invalid,
     email_transport = tolower(Sys.getenv("EMAIL_TRANSPORT", "gmailr")),
     deepseek_api_key = Sys.getenv("DEEPSEEK_API_KEY", ""),
-    allow_no_deepseek = as_bool(Sys.getenv("ALLOW_NO_DEEPSEEK"), default = FALSE),
+    allow_no_deepseek = as_bool(Sys.getenv("ALLOW_NO_DEEPSEEK"), default = as_bool(Sys.getenv("ALLOW_NO_OPENAI"), default = FALSE)),
     rank_model = Sys.getenv("DEEPSEEK_RANK_MODEL", "deepseek-chat"),
     summary_model = Sys.getenv("DEEPSEEK_SUMMARY_MODEL", "deepseek-chat"),
     deepseek_reasoning_effort = Sys.getenv("DEEPSEEK_REASONING_EFFORT", "low"),
-    min_score = as.numeric(Sys.getenv("NEWS_MIN_SCORE", "55")),
+    min_score = as.numeric(Sys.getenv("NEWS_MIN_SCORE", "45")),
     source_min_score = as.numeric(Sys.getenv("NEWS_SOURCE_MIN_SCORE", "30")),
     min_news_per_source = as.integer(Sys.getenv("NEWS_MIN_NEWS_PER_SOURCE", "5")),
     max_candidates_per_source = as.integer(Sys.getenv("MAX_CANDIDATES_PER_SOURCE", "60")),
-    news_per_source = as.integer(Sys.getenv("NEWS_PER_SOURCE", "6")),
-    max_selected = as.integer(Sys.getenv("MAX_SELECTED_NEWS", "40")),
+    news_per_source = as.integer(Sys.getenv("NEWS_PER_SOURCE", "10")),
+    max_selected = as.integer(Sys.getenv("MAX_SELECTED_NEWS", "50")),
     source_timeout = as.integer(Sys.getenv("SOURCE_TIMEOUT_SECONDS", "20")),
     j3_max_pages = as.integer(Sys.getenv("J3_MAX_PAGES", "20")),
     iff_max_pages = as.integer(Sys.getenv("IFF_MAX_PAGES", "5")),

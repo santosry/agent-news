@@ -12,9 +12,9 @@ graph TD
   B --> C[Coleta 10 Fontes]
   C --> D[Deduplicação]
   D --> E[Ranking DeepSeek]
-  E --> F[Seleção Diversa]
-  F --> G[Geração Resumos]
-  G --> H[HTML Gmail]
+  E --> F[Seleção diversa]
+  F --> G[Geração de resumos]
+  G --> H[HTML - Gmail]
   H --> I[Envio por E-mail]
   H --> J[CSV / JSON / HTML]
 ```
@@ -48,10 +48,10 @@ Cada fonte tem coletor independente. Falha em uma fonte é registrada e não imp
 ## Como Funciona (Fluxo de Dados)
 
 ### Passo 1: Acionamento
-O agente é executado automaticamente pelo GitHub Actions (sábado às 08:00 e quarta às 17:00, Horário de Brasília) ou manualmente via `workflow_dispatch`. Também pode ser executado localmente.
+O agente é executado automaticamente pelo GitHub Actions (sábado às 07:00 e quarta às 07:00, Horário de Brasília) ou manualmente via `workflow_dispatch`. Também pode ser executado localmente.
 
 ### Passo 2: Coleta
-Cada fonte é acessada em paralelo seguro. O agente busca notícias dentro de uma janela de 7 dias, usando APIs REST, feeds RSS, sitemaps XML ou scraping HTML, dependendo da fonte.
+Cada fonte é acessada em paralelo seguro. O agente busca notícias dentro de uma janela de 30 dias, usando APIs REST, feeds RSS, sitemaps XML ou scraping HTML, dependendo da fonte.
 
 ### Passo 3: Deduplicação
 - **Exata**: remove URLs duplicadas e títulos idênticos (normalizados)
@@ -66,10 +66,10 @@ O DeepSeek classifica cada notícia de 0 a 100, considerando:
 
 ### Passo 5: Seleção com Diversidade
 O algoritmo garante que:
-- Cada fonte tenha pelo menos 1 notícia (se houver com score > 40)
-- Máximo de 4 notícias por fonte
-- Total máximo de 16 notícias selecionadas
-- Score mínimo de 55 para inclusão
+- Cada fonte tenha pelo menos 5 notícias (NEWS_MIN_NEWS_PER_SOURCE)
+- Máximo de 10 notícias por fonte
+- Total máximo de 50 notícias selecionadas
+- Score mínimo de 45 para preencher vagas além do mínimo por fonte
 
 ### Passo 6: Geração de Resumos
 Para cada notícia selecionada, o DeepSeek gera:
@@ -228,7 +228,7 @@ DEEPSEEK_REASONING_EFFORT=low
 
 ```bash
 # Configure o e-mail remetente
-export EMAIL_FROM="arquivosryansantos@gmail.com"
+export EMAIL_FROM="seu.email@gmail.com"
 
 # Gere uma chave forte para criptografia
 Rscript -e "cat(paste(sample(c(letters, LETTERS, 0:9), 32, replace=TRUE), collapse=''), '\n')"
@@ -253,7 +253,7 @@ O script irá:
 Em servidores sem interface gráfica (incluindo GitHub Codespaces sem porta forward):
 
 ```bash
-export EMAIL_FROM="arquivosryansantos@gmail.com"
+export EMAIL_FROM="seu.email@gmail.com"
 export GMAILR_KEY="sua_chave"
 Rscript scripts/setup_gmail_automated.R
 # Escolha opção 2 (out-of-band/device flow)
@@ -272,6 +272,7 @@ Após executar o script, configure os secrets no GitHub:
 |---------------|-------|
 | `GMAILR_KEY` | A chave de criptografia gerada |
 | `GMAILR_TOKEN_ENC_B64` | Conteúdo de `secrets/token_base64.txt` |
+| `GMAIL_OAUTH_B64` | Conteúdo de `secrets/oauth_client_b64.txt` (base64 do `oauth_client.json`) |
 | `DEEPSEEK_API_KEY` | Sua chave da API DeepSeek |
 
 ### Passo 4: Testar envio local
@@ -281,7 +282,7 @@ Após executar o script, configure os secrets no GitHub:
 DRY_RUN=true Rscript agent_news.R
 
 # Teste com envio real
-DRY_RUN=false EMAIL_FROM="arquivosryansantos@gmail.com" Rscript agent_news.R
+DRY_RUN=false EMAIL_FROM="seu.email@gmail.com" Rscript agent_news.R
 ```
 
 ### Solução de Problemas do Gmail
@@ -291,7 +292,7 @@ DRY_RUN=false EMAIL_FROM="arquivosryansantos@gmail.com" Rscript agent_news.R
 | `invalid_grant` | Token expirado ou revogado | Execute `scripts/setup_gmail_automated.R` novamente |
 | `access_denied` | App não verificado | Adicione seu e-mail como Test User no OAuth consent screen |
 | `Error 403: Request had insufficient authentication scopes` | Escopo errado | Use `https://www.googleapis.com/auth/gmail.send` |
-| Token não encontrado no Actions | Secrets não configurados | Verifique `GMAILR_KEY` e `GMAILR_TOKEN_ENC_B64` nos secrets |
+| Token não encontrado no Actions | Secrets não configurados | Verifique `GMAILR_KEY`, `GMAILR_TOKEN_ENC_B64` e `GMAIL_OAUTH_B64` nos secrets |
 | `GMAILR_KEY is required` | Chave não definida | Configure a variável de ambiente ou GitHub Secret |
 | App em "Testing" e token expira em 7 dias | Modo de teste do Google | Renove o token semanalmente ou solicite verificação do app |
 | Navegador não abre (headless) | Sem interface gráfica | Use opção 2 (out-of-band flow) no script de setup |
@@ -346,7 +347,7 @@ $env:EMAIL_TRANSPORT="outlook"
 
 O workflow está em `.github/workflows/weekly-news.yml`.
 
-- **Agendamento**: sábado às 08:00 (Horário de Brasília = 11:00 UTC) e quarta-feira às 17:00 (20:00 UTC)
+- **Agendamento**: sábado às 07:00 (Horário de Brasília = 10:00 UTC) e quarta-feira às 07:00 (10:00 UTC)
 - **workflow_dispatch**: execução manual com opção `dry_run`
 - Restaura dependências travadas pelo `renv.lock`
 - Valida sintaxe R, workflow YAML, secrets e testes antes do agente
@@ -360,6 +361,7 @@ O workflow está em `.github/workflows/weekly-news.yml`.
 | `DEEPSEEK_API_KEY` | Recomendado | Chave da API DeepSeek para ranking e resumo |
 | `GMAILR_KEY` | Para envio real | Chave de criptografia do token Gmail |
 | `GMAILR_TOKEN_ENC_B64` | Para envio real | Token Gmail criptografado em base64 |
+| `GMAIL_OAUTH_B64` | Para envio real | `oauth_client.json` em base64 (necessário para renovar o token) |
 
 ## Segurança
 
@@ -417,10 +419,10 @@ A cada execução são gerados em `outputs/`:
 ### Por que minha notícia não foi selecionada?
 
 A seleção segue critérios editoriais rigorosos:
-- **Fora da janela**: apenas notícias dos últimos 7 dias
-- **Score baixo**: o DeepSeek atribui score de 0-100; o corte padrão é 55
+- **Fora da janela**: apenas notícias dos últimos 30 dias
+- **Score baixo**: o DeepSeek atribui score de 0-100; o corte padrão é 45
 - **Penalização**: fofoca, celebridades, esportes rotineiros e clickbait são penalizados
-- **Limite por fonte**: máximo de 4 notícias por fonte
+- **Limite por fonte**: máximo de 10 notícias por fonte
 - **Data não validada**: se a data de publicação não pôde ser extraída, a notícia é descartada
 
 ### Como ajustar a relevância das notícias?
@@ -428,11 +430,12 @@ A seleção segue critérios editoriais rigorosos:
 Edite as variáveis no `.Renviron`:
 
 ```text
-NEWS_MIN_SCORE=55          # Score mínimo para inclusão (padrão: 55)
-NEWS_SOURCE_MIN_SCORE=40   # Score mínimo para garantir ao menos 1 por fonte
-NEWS_PER_SOURCE=4          # Máximo de notícias por fonte
-MAX_SELECTED_NEWS=16       # Total máximo de notícias no clipping
-NEWS_LOOKBACK_DAYS=7       # Janela temporal em dias
+NEWS_MIN_SCORE=45          # Score mínimo para preencher além do mínimo por fonte (padrão: 45)
+NEWS_SOURCE_MIN_SCORE=30   # Reservado (não usado na seleção atual)
+NEWS_MIN_NEWS_PER_SOURCE=5 # Mínimo garantido por fonte
+NEWS_PER_SOURCE=10         # Máximo de notícias por fonte
+MAX_SELECTED_NEWS=50       # Total máximo de notícias no clipping
+NEWS_LOOKBACK_DAYS=30      # Janela temporal em dias
 ```
 
 Para ajustar os critérios de ranqueamento, edite as instruções em `R/rank.R` (função `rank_news`).
@@ -446,7 +449,7 @@ Para ajustar os critérios de ranqueamento, edite as instruções em `R/rank.R` 
 5. **Estrutura HTML**: sites podem alterar classes CSS e estrutura
 6. **Abra uma issue**: reporte no GitHub para atualização do coletor
 
-O agente é resiliente: a falha de uma fonte não impede as demais. A fonte com falha aparece no e-mail com a mensagem de erro.
+- **Fallback automático**: RSS/API → HTML em todas as fontes. Se tudo falhar, a fonte é registrada como `failed` sem quebrar as demais
 
 ### O token do Gmail expirou. O que fazer?
 
@@ -492,7 +495,7 @@ Sim! Defina `ALLOW_NO_DEEPSEEK=true`. O agente usará um algoritmo heurístico p
 
 - O agente usa apenas conteúdo público e não contorna paywalls, login ou bloqueios
 - Sites podem alterar estrutura, feeds, charset ou políticas de robots a qualquer momento
-- gov.br pode bloquear IPs de datacenters (incluindo GitHub Actions); os coletores registram a falha
+- gov.br (MEC, Saúde) pode bloquear IPs de datacenters (incluindo GitHub Actions); os coletores registram a falha e tentam URLs alternativas
 - Feeds e sitemaps podem não expor todo o histórico semanal quando o volume é alto
 - O token Gmail em modo "Testing" expira após 7 dias
 - O resumo depende do conteúdo público disponível no momento da execução

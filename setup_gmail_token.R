@@ -13,7 +13,7 @@ client_path <- Sys.getenv("GMAIL_OAUTH_CLIENT", "oauth_client.json")
 plain_token_path <- Sys.getenv("GMAIL_TOKEN_PATH", "secrets/gmailr-token.rds")
 encrypted_token_path <- Sys.getenv("GMAIL_ENCRYPTED_TOKEN_PATH", "secrets/gmailr-token.rds.enc")
 b64_token_path <- paste0(encrypted_token_path, ".b64.txt")
-email <- Sys.getenv("EMAIL_FROM", "ryandpaulosantos@gmail.com")
+email <- Sys.getenv("EMAIL_FROM", "")
 
 if (!file.exists(client_path)) {
   stop("oauth_client.json not found. Download the OAuth client from Google Cloud and place it at the project root.", call. = FALSE)

@@ -4,6 +4,7 @@ collect_folha1 <- function(config) {
     "https://www.folha1.com.br/geral/",
     "https://www.folha1.com.br/politica/",
     "https://www.folha1.com.br/economia/",
+    "https://www.folha1.com.br/ultimas/",
     "https://www.folha1.com.br/cidade/",
     "https://www.folha1.com.br/norte-fluminense/",
     "https://www.folha1.com.br/blogs/"

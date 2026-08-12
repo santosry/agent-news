@@ -207,28 +207,32 @@ select_for_clipping <- function(ranked, config) {
     ) |>
     dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at))
 
-  source_min_score <- config$source_min_score %||% min(config$min_score, 40)
-  min_news_per_source <- min(config$min_news_per_source %||% 1L, config$news_per_source)
+  min_news_per_source <- min(config$min_news_per_source %||% 5L, config$news_per_source)
 
+  # Phase 1: guarantee min_news_per_source from EVERY source (by best score, no threshold)
   protected <- valid |>
-    dplyr::filter(.data$score >= source_min_score) |>
     dplyr::group_by(.data$source) |>
     dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at), .by_group = TRUE) |>
     dplyr::slice_head(n = min_news_per_source) |>
     dplyr::ungroup()
 
-  fill_slots <- max(config$max_selected - nrow(protected), 0L)
-  if (fill_slots == 0L) {
+  # Cap at max_selected
+  if (nrow(protected) >= config$max_selected) {
     return(protected |>
       dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at)) |>
       utils::head(config$max_selected))
   }
 
+  fill_slots <- config$max_selected - nrow(protected)
   protected_counts <- protected |>
     dplyr::count(.data$source, name = "protected_n")
 
+  # Phase 2: fill remaining slots with items >= min_score, respecting per-source cap (news_per_source)
   fill <- valid |>
-    dplyr::filter(.data$score >= config$min_score, !.data$id %in% protected$id) |>
+    dplyr::filter(
+      .data$score >= config$min_score,
+      !.data$id %in% protected$id
+    ) |>
     dplyr::left_join(protected_counts, by = "source") |>
     dplyr::mutate(remaining_source_slots = pmax(config$news_per_source - tidyr::replace_na(.data$protected_n, 0L), 0L)) |>
     dplyr::group_by(.data$source) |>

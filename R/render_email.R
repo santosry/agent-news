@@ -40,7 +40,7 @@ render_email_html <- function(news, status_tbl, config) {
       glue::glue(
         "<div style='border-bottom:1px solid #e5e7eb;padding:14px 0'>",
         "<h3 style='font-size:16px;margin:0 0 6px;line-height:1.4'>",
-        "<a href='{htmltools::htmlEscape(item$url)}' style='color:{accent};text-decoration:none;font-weight:600'>{htmltools::htmlEscape(item$title_final)}</a>",
+        "<a href=\"{htmltools::htmlEscape(item$url)}\" target='_blank' style='color:#1a56db;font-weight:600'>{htmltools::htmlEscape(item$title_final)}</a>",
         "</h3>",
         "<p style='margin:0 0 8px;color:#9ca3af;font-size:12px'>{item$source} &middot; {format(item$published_at, '%d/%m/%Y')} &middot; {htmltools::htmlEscape(item$topic)}</p>",
         "<p style='margin:0;color:#374151;font-size:14px;line-height:1.6'>{htmltools::htmlEscape(summary_text)}</p>",
@@ -62,7 +62,7 @@ render_email_html <- function(news, status_tbl, config) {
       top_accent <- source_colors[[item$source[[1]]]] %||% "#b91c1c"
       glue::glue(
         "<li style='margin:0 0 14px;padding:8px 0'>",
-        "<a href='{htmltools::htmlEscape(item$url)}' style='color:{top_accent};font-weight:bold;text-decoration:none;font-size:15px'>{htmltools::htmlEscape(item$title_final)}</a>",
+        "<a href=\"{htmltools::htmlEscape(item$url)}\" target='_blank' style='color:#1a56db;font-weight:bold;font-size:15px'>{htmltools::htmlEscape(item$title_final)}</a>",
         "<br><span style='color:#9ca3af;font-size:12px'>{item$source} &middot; {format(item$published_at, '%d/%m/%Y')}</span>",
         "<br><span style='color:#4b5563;font-size:13px'>{htmltools::htmlEscape(trim_summary(item$summary, 200))}</span>",
         "</li>"

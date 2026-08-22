@@ -296,6 +296,8 @@ DRY_RUN=false EMAIL_FROM="seu.email@gmail.com" Rscript agent_news.R
 | `Error 403: Request had insufficient authentication scopes` | Escopo errado | Use `https://www.googleapis.com/auth/gmail.send` |
 | Token não encontrado no Actions | Secrets não configurados | Verifique `GMAILR_KEY`, `GMAILR_TOKEN_ENC_B64` e `GMAIL_OAUTH_B64` nos secrets |
 | `GMAILR_KEY is required` | Chave não definida | Configure a variável de ambiente ou GitHub Secret |
+| `unknown input format` / `Failed to deserialize the Gmail token` | `GMAILR_KEY` não bate com a chave usada para criptografar o token | Regenere o token com `scripts/setup_gmail_automated.R` e atualize **ambos** os secrets `GMAILR_KEY` e `GMAILR_TOKEN_ENC_B64` |
+| `GMAILR_TOKEN_ENC_B64 does not contain a valid encrypted Gmail token` | Secret preenchido com o base64 errado | Use exatamente o conteúdo de `secrets/token_base64.txt` (token **criptografado**, não o token simples) |
 | App em "Testing" e token expira em 7 dias | Modo de teste do Google | Renove o token semanalmente ou solicite verificação do app |
 | Navegador não abre (headless) | Sem interface gráfica | Use opção 2 (out-of-band flow) no script de setup |
 

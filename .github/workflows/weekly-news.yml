@@ -108,6 +108,44 @@ jobs:
             echo "Email delivery secrets configured"
           fi
 
+      - name: Verify Gmail token decrypts
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
+        run: |
+          Rscript -e '
+          source("R/config.R")
+          source("R/logging.R")
+          source("R/send_email.R")
+          cfg <- load_config()
+          if (cfg$dry_run) {
+            cat("Dry-run enabled; skipping Gmail token verification.\n")
+            quit(save = "no", status = 0)
+          }
+          token <- load_gmail_token(cfg)
+          if (is.null(token)) {
+            stop("Could not load Gmail token from secrets. Check GMAILR_KEY, GMAILR_TOKEN_ENC_B64 and GMAIL_OAUTH_B64.", call. = FALSE)
+          }
+          cat("Gmail token decrypted successfully for ", token$email %||% "unknown", "\n", sep = "")
+          '
+
+      - name: Verify DeepSeek API key
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "DEEPSEEK_API_KEY is not set; deterministic heuristic ranking will be used."
+          else
+            status=$(curl -s -o /tmp/deepseek_check.json -w "%{http_code}" \
+              -X POST "https://api.deepseek.com/chat/completions" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
+              -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"ping"}],"max_tokens":1}')
+            if [ "$status" = "200" ]; then
+              echo "DeepSeek API key is valid"
+            else
+              echo "::warning::DeepSeek API key check returned HTTP $status"
+              head -c 400 /tmp/deepseek_check.json 2>/dev/null || true
+              echo ""
+            fi
+          fi
+
       - name: Run tests
         run: |
           Rscript tests/testthat.R
@@ -126,6 +164,17 @@ jobs:
       - name: Run weekly agent
         run: |
           Rscript agent_news.R
+
+      - name: Print run report on failure
+        if: failure()
+        run: |
+          echo "===== Last run report (for diagnosis) ====="
+          report=$(ls -t outputs/news-run-report-*.json 2>/dev/null | head -1)
+          if [ -n "$report" ]; then
+            cat "$report"
+          else
+            echo "No run report was generated (the agent failed before writing it)."
+          fi
 
       - name: Upload clipping artifacts
         if: always()

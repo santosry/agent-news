@@ -14,7 +14,17 @@ parse_args <- function(args) {
 args <- parse_args(commandArgs(trailingOnly = TRUE))
 config <- load_config(dry_run = args$dry_run)
 
-result <- run_news_agent(config)
+result <- tryCatch(
+  run_news_agent(config),
+  error = function(e) {
+    list(
+      ok = FALSE,
+      message = paste0("Agent failed: ", conditionMessage(e)),
+      status = NULL,
+      error = conditionMessage(e)
+    )
+  }
+)
 
 if (!isTRUE(result$ok)) {
   stop(result$message, call. = FALSE)

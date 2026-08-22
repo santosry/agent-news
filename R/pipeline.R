@@ -11,12 +11,18 @@ run_news_agent <- function(config = load_config()) {
 
   collectors <- news_collectors()
 
-  # Parallel collection when furrr is available
-  if (requireNamespace("furrr", quietly = TRUE) && length(collectors) > 1) {
-    future::plan(future::multisession, workers = min(6L, length(collectors)))
-    on.exit(future::plan(future::sequential), add = TRUE)
-    log_info("Collecting from {length(collectors)} sources in parallel")
-    source_results <- furrr::future_imap(collectors, ~ collect_source_safely(.y, .x, config))
+  # Parallel collection when furrr is available; fall back to sequential on any error.
+  if (requireNamespace("furrr", quietly = TRUE) && requireNamespace("future", quietly = TRUE) && length(collectors) > 1) {
+    source_results <- tryCatch({
+      future::plan(future::multisession, workers = min(6L, length(collectors)))
+      on.exit(future::plan(future::sequential), add = TRUE)
+      log_info("Collecting from {length(collectors)} sources in parallel")
+      furrr::future_imap(collectors, ~ collect_source_safely(.y, .x, config))
+    }, error = function(e) {
+      log_warn("Parallel collection failed ({conditionMessage(e)}); falling back to sequential collection.")
+      future::plan(future::sequential)
+      purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
+    })
   } else {
     source_results <- purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
   }

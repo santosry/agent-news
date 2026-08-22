@@ -37,50 +37,62 @@ rank_news <- function(items, config) {
   }
 
   log_info("Sending {nrow(items)} candidates to DeepSeek ranking.")
-  chunks <- split(items, ceiling(seq_len(nrow(items)) / 40))
-  ranked <- purrr::map_dfr(chunks, function(chunk) {
-    payload <- chunk |>
-      dplyr::transmute(
-        id = .data$id,
-        source = .data$source,
-        published_at = format(.data$published_at, "%Y-%m-%d %H:%M:%S %Z"),
-        title = .data$title,
-        excerpt = .data$excerpt
+  ranked <- tryCatch({
+    chunks <- split(items, ceiling(seq_len(nrow(items)) / 40))
+    purrr::map_dfr(chunks, function(chunk) {
+      payload <- chunk |>
+        dplyr::transmute(
+          id = .data$id,
+          source = .data$source,
+          published_at = format(.data$published_at, "%Y-%m-%d %H:%M:%S %Z"),
+          title = .data$title,
+          excerpt = .data$excerpt
+        )
+
+      instructions <- paste(
+        "You are an editorial relevance scorer for a weekly intelligence clipping.",
+        "Score only the facts presented in the supplied title and excerpt.",
+        "Do not invent facts. Do not change the source.",
+        "Prioritize: public health, epidemiology, nursing, SUS, hospitals, vaccination, disease outbreaks, science, research, public policy, public management, education, higher education, basic education, professional education, fiscal policy, infrastructure, environment, climate, pollution, public-impact technology, AI, Rio de Janeiro, Campos dos Goytacazes, and Norte Fluminense.",
+        "For J3News and Folha1, give high weight to Campos dos Goytacazes, Norte Fluminense, local administration, health, infrastructure, regional economy, and municipal policy.",
+        "For IFF and UENF, give high weight to research, science, innovation, extension, graduate programs, academic opportunities, institutional decisions, public education, technology transfer, health, environment, and regional development.",
+        "For MEC, give high weight to educational policy, basic and higher education programs, PNE, ENEM, FIES, PROUNI, teacher training, educational inclusion, and school infrastructure.",
+        "For Ministério da Saúde, give high weight to SUS, public health policy, vaccination, disease control, primary care, specialized care, health surveillance, health funding, and health workforce.",
+        "For Cofen and Coren-RJ, give high weight to nursing, professional regulation, ethical guidelines, public health nursing, health workforce policy, and professional training.",
+        "For BBC News and CNN Brasil, prioritize national and international facts with broad population, scientific, political, economic, environmental, or institutional impact.",
+        "Strongly penalize gossip, celebrities, reality shows, astrology, routine sports, promotional content, and clickbait unless there is extraordinary public impact.",
+        sep = "\n"
       )
 
-    instructions <- paste(
-      "You are an editorial relevance scorer for a weekly intelligence clipping.",
-      "Score only the facts presented in the supplied title and excerpt.",
-      "Do not invent facts. Do not change the source.",
-      "Prioritize: public health, epidemiology, nursing, SUS, hospitals, vaccination, disease outbreaks, science, research, public policy, public management, education, higher education, basic education, professional education, fiscal policy, infrastructure, environment, climate, pollution, public-impact technology, AI, Rio de Janeiro, Campos dos Goytacazes, and Norte Fluminense.",
-      "For J3News and Folha1, give high weight to Campos dos Goytacazes, Norte Fluminense, local administration, health, infrastructure, regional economy, and municipal policy.",
-      "For IFF and UENF, give high weight to research, science, innovation, extension, graduate programs, academic opportunities, institutional decisions, public education, technology transfer, health, environment, and regional development.",
-      "For MEC, give high weight to educational policy, basic and higher education programs, PNE, ENEM, FIES, PROUNI, teacher training, educational inclusion, and school infrastructure.",
-      "For Ministério da Saúde, give high weight to SUS, public health policy, vaccination, disease control, primary care, specialized care, health surveillance, health funding, and health workforce.",
-      "For Cofen and Coren-RJ, give high weight to nursing, professional regulation, ethical guidelines, public health nursing, health workforce policy, and professional training.",
-      "For BBC News and CNN Brasil, prioritize national and international facts with broad population, scientific, political, economic, environmental, or institutional impact.",
-      "Strongly penalize gossip, celebrities, reality shows, astrology, routine sports, promotional content, and clickbait unless there is extraordinary public impact.",
-      sep = "\n"
-    )
+      input <- paste(
+        "Return a JSON object matching the schema. Score each item from 0 to 100.",
+        jsonlite::toJSON(payload, dataframe = "rows", auto_unbox = TRUE),
+        sep = "\n\n"
+      )
 
-    input <- paste(
-      "Return a JSON object matching the schema. Score each item from 0 to 100.",
-      jsonlite::toJSON(payload, dataframe = "rows", auto_unbox = TRUE),
-      sep = "\n\n"
-    )
+      result <- deepseek_chat_completions(
+        config = config,
+        model = config$rank_model,
+        system_prompt = instructions,
+        user_prompt = input,
+        schema_name = "news_ranking",
+        schema = ranking_schema()
+      )
 
-    result <- deepseek_chat_completions(
-      config = config,
-      model = config$rank_model,
-      system_prompt = instructions,
-      user_prompt = input,
-      schema_name = "news_ranking",
-      schema = ranking_schema()
-    )
-
-    out <- dplyr::bind_rows(result$items)
-    validate_ranking_output(out, chunk)
+      out <- dplyr::bind_rows(result$items)
+      validate_ranking_output(out, chunk)
+    })
+  }, error = function(e) {
+    if (isTRUE(config$allow_no_deepseek)) {
+      log_warn("DeepSeek ranking failed ({conditionMessage(e)}); falling back to heuristic ranking.")
+      return(NULL)
+    }
+    stop(conditionMessage(e), call. = FALSE)
   })
+
+  if (is.null(ranked)) {
+    return(heuristic_rank(items))
+  }
 
   items |>
     dplyr::left_join(ranked, by = "id") |>

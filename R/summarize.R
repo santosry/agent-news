@@ -44,7 +44,17 @@ summarize_selected <- function(selected, config) {
       }
       out <- fallback_summary(item, article_text)
     } else {
-      out <- summarize_one_with_deepseek(item, article_text, config)
+      out <- tryCatch(
+        summarize_one_with_deepseek(item, article_text, config),
+        error = function(e) {
+          if (isTRUE(config$allow_no_deepseek)) {
+            log_warn("DeepSeek summary failed for {item$url[[1]]}: {conditionMessage(e)}; using fallback summary.")
+            fallback_summary(item, article_text)
+          } else {
+            stop(conditionMessage(e), call. = FALSE)
+          }
+        }
+      )
     }
 
     item |>

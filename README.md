@@ -198,6 +198,8 @@ DEEPSEEK_REASONING_EFFORT=low
 
 **Sem chave DeepSeek**, o modo `DRY_RUN=true` usa ranking e resumo determinísticos para validar coleta, HTML e auditoria. Para executar sem DeepSeek em produção, defina `ALLOW_NO_DEEPSEEK=true`.
 
+**Com `ALLOW_NO_DEEPSEEK=true`**, se a API do DeepSeek falhar (chave inválida, erro HTTP ou timeout), o agente cai automaticamente para o ranking/resumo heurístico em vez de interromper a execução — assim o clipping continua sendo produzido e enviado.
+
 ## Configuração do Envio de E-mail (Gmail)
 
 ### Pré-requisitos

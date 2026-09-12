@@ -160,6 +160,16 @@ deterministic_why_matters <- function(item, text) {
     return("Mantém no radar movimentos institucionais de IFF e UENF, duas instituições centrais para ensino, pesquisa, extensão e desenvolvimento regional.")
   }
 
+  if (source %in% c("CNPq", "FAPERJ", "CAPES")) {
+    if (has_any_normalized_term(normalized, c("edital", "chamada", "inscricao", "bolsa", "fomento", "selecao", "resultado", "mestrado", "doutorado", "avaliacao"))) {
+      return("Interessa diretamente à comunidade acadêmica e científica porque envolve prazos, editais, bolsas, avaliação ou resultados de fomento e pós-graduação.")
+    }
+    if (has_any_normalized_term(normalized, c("pesquisa", "inovacao", "ciencia", "tecnologia", "internacionalizacao"))) {
+      return("Ajuda a acompanhar políticas, programas e resultados de ciência, tecnologia, inovação e formação de pesquisadores.")
+    }
+    return("Mantém no radar decisões e oportunidades institucionais de fomento à ciência, pesquisa e pós-graduação.")
+  }
+
   if (identical(topic, "saúde pública")) {
     return("Importa porque pode afetar prevenção, acesso a serviços, organização da rede de saúde ou risco sanitário para grupos populacionais específicos.")
   }

@@ -3,16 +3,19 @@ name: Scheduled news clipping
 "on":
   schedule:
     # GitHub Actions schedules use UTC.
-    # Wednesday 10:00 UTC = Wednesday 07:00 America/Sao_Paulo.
-    - cron: '0 10 * * 3'
     # Saturday 10:00 UTC = Saturday 07:00 America/Sao_Paulo.
     - cron: '0 10 * * 6'
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Generate artifacts without sending email'
+        description: 'Generate artifacts without sending email (true = no email sent)'
         required: true
         default: true
+        type: boolean
+      test_mode:
+        description: 'Send only to the test recipient (ryandpaulosantos@gmail.com). Overrides normal recipients.'
+        required: true
+        default: false
         type: boolean
 
 permissions:
@@ -40,6 +43,7 @@ jobs:
       GMAILR_TOKEN_ENC_B64: ${{ secrets.GMAILR_TOKEN_ENC_B64 }}
       GMAIL_OAUTH_B64: ${{ secrets.GMAIL_OAUTH_B64 }}
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+      AGENT_TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.test_mode || 'false' }}
       RENV_PATHS_CACHE: ~/.cache/R/renv
 
     steps:
@@ -82,7 +86,7 @@ jobs:
 
       - name: Validate R syntax
         run: |
-          Rscript -e "files <- c('agent_news.R', list.files('R', pattern='[.]R$', full.names=TRUE)); for (f in files) parse(f); cat('R syntax OK\n')"
+          Rscript -e "files <- c('agent_news.R', list.files('R', pattern='[.]R$', full.names=TRUE, recursive=TRUE)); for (f in files) parse(f); cat('R syntax OK\n')"
 
       - name: Validate workflow YAML
         run: |
@@ -97,7 +101,7 @@ jobs:
         run: |
           missing=""
           if [ -z "$EMAIL_FROM" ]; then missing="$missing EMAIL_FROM"; fi
-          if [ -z "$EMAIL_TO" ]; then missing="$missing EMAIL_TO"; fi
+          if [ "$AGENT_TEST_MODE" != "true" ] && [ -z "$EMAIL_TO" ]; then missing="$missing EMAIL_TO"; fi
           if [ -z "$GMAILR_KEY" ]; then missing="$missing GMAILR_KEY"; fi
           if [ -z "$GMAILR_TOKEN_ENC_B64" ]; then missing="$missing GMAILR_TOKEN_ENC_B64"; fi
           if [ -z "$GMAIL_OAUTH_B64" ]; then missing="$missing GMAIL_OAUTH_B64"; fi
@@ -160,6 +164,12 @@ jobs:
           BENCHMARK_MAX_SELECTED_NEWS: 8
         run: |
           Rscript scripts/benchmark_agent.R
+
+      - name: Print effective run mode
+        run: |
+          echo "DRY_RUN=$DRY_RUN"
+          echo "AGENT_TEST_MODE=$AGENT_TEST_MODE"
+          echo "Scheduled (normal mode) when DRY_RUN=false and AGENT_TEST_MODE=false."
 
       - name: Run weekly agent
         run: |

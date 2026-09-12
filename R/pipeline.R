@@ -1,31 +1,16 @@
 run_news_agent <- function(config = load_config()) {
   run_started_at <- Sys.time()
-  log_info("Weekly news agent started. dry_run={config$dry_run}")
+  log_info("Weekly news agent started. dry_run={config$dry_run}; test_mode={config$test_mode}; mode={config$mode}")
   log_info("Window: {format(config$window_start, '%Y-%m-%d %H:%M:%S %Z')} to {format(config$window_end, '%Y-%m-%d %H:%M:%S %Z')} ({config$timezone_label})")
-  log_info("DeepSeek ranking model: {config$rank_model}; summary model: {config$summary_model}")
-  log_info("Recipients: {paste(config$recipients, collapse = ', ')}")
+  log_info("DeepSeek ranking model: {config$rank_model}; summary model: {config$summary_model}; planner model: {config$planner_model}")
+  log_info("Send recipients: {paste(config$send_recipients, collapse = ', ')}")
 
   if (length(config$invalid_recipients) > 0) {
     log_warn("Invalid recipients ignored: {paste(config$invalid_recipients, collapse = ', ')}")
   }
 
   collectors <- news_collectors()
-
-  # Parallel collection when furrr is available; fall back to sequential on any error.
-  if (requireNamespace("furrr", quietly = TRUE) && requireNamespace("future", quietly = TRUE) && length(collectors) > 1) {
-    source_results <- tryCatch({
-      future::plan(future::multisession, workers = min(6L, length(collectors)))
-      on.exit(future::plan(future::sequential), add = TRUE)
-      log_info("Collecting from {length(collectors)} sources in parallel")
-      furrr::future_imap(collectors, ~ collect_source_safely(.y, .x, config))
-    }, error = function(e) {
-      log_warn("Parallel collection failed ({conditionMessage(e)}); falling back to sequential collection.")
-      future::plan(future::sequential)
-      purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
-    })
-  } else {
-    source_results <- purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
-  }
+  source_results <- collect_sources(collectors, config)
   status_tbl <- source_status_table(source_results)
   all_items <- purrr::map_dfr(source_results, "items")
   if (!any_source_collected(status_tbl)) {
@@ -52,21 +37,7 @@ run_news_agent <- function(config = load_config()) {
   html <- render_email_html(summarized, status_tbl, config)
   html_path <- write_email_html(html, run_started_at, config)
 
-  final_items <- all_items |>
-    dplyr::select(-dplyr::any_of(c("score", "topic", "justification", "canonical_id"))) |>
-    dplyr::left_join(
-      ranked |>
-        dplyr::select("id", "score", "topic", "justification", "canonical_id", "discard_reason"),
-      by = "id",
-      suffix = c("", "_ranked")
-    ) |>
-    dplyr::mutate(
-      score = .data$score %||% NA_real_,
-      topic = .data$topic %||% NA_character_,
-      discard_reason = dplyr::coalesce(.data$discard_reason_ranked, .data$discard_reason)
-    ) |>
-    dplyr::select(-dplyr::any_of("discard_reason_ranked"))
-
+  final_items <- build_audit_items(all_items, ranked)
   audit <- write_audit(final_items, run_started_at, summarized$id, config)
 
   send_result <- send_clipping(html, config)
@@ -117,7 +88,12 @@ news_collectors <- function() {
     Cofen = collect_cofen,
     MEC = collect_mec,
     `Ministério da Saúde` = collect_saude,
-    `Coren-RJ` = collect_coren
+    `Coren-RJ` = collect_coren,
+    CNPq = collect_cnpq,
+    FAPERJ = collect_faperj,
+    CAPES = collect_capes,
+    IBM = collect_ibm,
+    AHA = collect_aha
   )
 }
 

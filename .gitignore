@@ -11,6 +11,8 @@ secrets/*
 outputs/*
 !outputs/.gitkeep
 
+tests/testthat/outputs/
+
 work/*
 !.gitkeep
 

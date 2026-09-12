@@ -22,7 +22,7 @@ test_that("no-key production mode is explicit", {
   expect_equal(cfg$email_transport, "outlook")
 })
 
-test_that("GitHub Actions schedule includes Brasilia Saturday and Wednesday runs", {
+test_that("GitHub Actions schedule includes only the Brasilia Saturday run", {
   workflow_path <- file.path("..", "..", ".github", "workflows", "weekly-news.yml")
   if (!file.exists(workflow_path)) {
     workflow_path <- file.path(".github", "workflows", "weekly-news.yml")
@@ -31,7 +31,7 @@ test_that("GitHub Actions schedule includes Brasilia Saturday and Wednesday runs
   crons <- purrr::map_chr(workflow[["on"]][["schedule"]], "cron")
 
   expect_true("0 10 * * 6" %in% crons)
-  expect_true("0 10 * * 3" %in% crons)
+  expect_false("0 10 * * 3" %in% crons)
   expect_equal(workflow$jobs$`weekly-news`$env$NEWS_TZ, "America/Sao_Paulo")
 })
 
@@ -110,6 +110,60 @@ test_that("selection protects one relevant item per source before filling by sco
   cfg$max_selected <- 6
   selected <- select_for_clipping(ranked, cfg)
   expect_setequal(selected$source, c("J3News", "Folha1", "IFF", "UENF", "BBC News", "CNN Brasil"))
+})
+
+test_that("politics and elections items are hard-filtered from the clipping", {
+  items <- tibble::tibble(
+    id = c("p1", "h1", "p2", "p3", "h2"),
+    source = c("BBC News", "Ministério da Saúde", "CNN Brasil", "J3News", "MEC"),
+    title = c(
+      "Eleições 2026: candidatos debatem propostas",
+      "Campanha de vacinação contra gripe é ampliada",
+      "Pesquisa eleitoral aponta empate técnico",
+      "Partido anuncia coligação para o pleito",
+      "Mais de 152 mil inscritos farão o Enamed 2026"
+    ),
+    excerpt = c(
+      "Disputa eleitoral no Congresso.",
+      "Saúde pública amplia imunização.",
+      "Votação e urna eletrônica.",
+      "Disputa partidária no senado.",
+      "Educação médica e políticas públicas."
+    ),
+    published_at = lubridate::ymd_hms(rep("2026-07-05 10:00:00", 5), tz = "America/Sao_Paulo"),
+    score = c(90, 88, 86, 84, 82),
+    topic = c("política internacional", "saúde pública", "política eleitoral", "interesse público", "Política educacional"),
+    justification = rep("teste", 5),
+    discard_reason = NA_character_
+  )
+  out <- filter_blocked_topics(items)
+  expect_equal(out$discard_reason[out$id == "p1"], "politics_or_elections")
+  expect_equal(out$discard_reason[out$id == "p2"], "politics_or_elections")
+  expect_equal(out$discard_reason[out$id == "p3"], "politics_or_elections")
+  expect_true(is.na(out$discard_reason[out$id == "h1"]))
+  expect_true(is.na(out$discard_reason[out$id == "h2"]))
+})
+
+test_that("selection still includes one item per source even if fuzzy-dedup discarded it", {
+  ranked <- tibble::tibble(
+    id = c("a", "b"),
+    source = c("J3News", "Folha1"),
+    title = c("Vacinação contra HPV é ampliada em Campos", "HPV: vacinação ampliada em Campos"),
+    excerpt = c("Campanha de vacinação foi ampliada.", "Vacinação contra HPV passa a incluir adolescentes."),
+    published_at = lubridate::ymd_hms(c("2026-07-05 10:00:00", "2026-07-05 11:00:00"), tz = "America/Sao_Paulo"),
+    score = c(90, 80),
+    topic = c("saúde pública", "saúde pública"),
+    justification = c("a", "b"),
+    discard_reason = c(NA_character_, "duplicate_or_same_event"),
+    canonical_id = c("a", "a")
+  )
+  cfg <- load_config(dry_run = TRUE)
+  cfg$min_score <- 55
+  cfg$min_news_per_source <- 1
+  cfg$news_per_source <- 4
+  cfg$max_selected <- 5
+  selected <- select_for_clipping(ranked, cfg)
+  expect_setequal(selected$source, c("J3News", "Folha1"))
 })
 
 test_that("dates parse with timezone and respect seven day window", {

@@ -30,8 +30,12 @@ validate_run_invariants <- function(all_items, ranked, selected, status_tbl, con
     }
   }
 
-  if (!config$dry_run && length(config$recipients) == 0) {
+  if (!config$dry_run && length(config$send_recipients) == 0) {
     errors <- c(errors, "production_run_without_valid_recipients")
+  }
+
+  if (!config$dry_run && isTRUE(config$test_mode) && !identical(config$send_recipients, test_recipient())) {
+    errors <- c(errors, "test_mode_must_only_send_to_test_recipient")
   }
 
   if (!config$dry_run && !deepseek_available(config) && !isTRUE(config$allow_no_deepseek)) {

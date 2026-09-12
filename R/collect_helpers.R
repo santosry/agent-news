@@ -1,3 +1,20 @@
+collect_sources <- function(collectors, config) {
+  if (requireNamespace("furrr", quietly = TRUE) && requireNamespace("future", quietly = TRUE) && length(collectors) > 1) {
+    tryCatch({
+      future::plan(future::multisession, workers = min(6L, length(collectors)))
+      on.exit(future::plan(future::sequential), add = TRUE)
+      log_info("Collecting from {length(collectors)} sources in parallel")
+      furrr::future_imap(collectors, ~ collect_source_safely(.y, .x, config))
+    }, error = function(e) {
+      log_warn("Parallel collection failed ({conditionMessage(e)}); falling back to sequential collection.")
+      future::plan(future::sequential)
+      purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
+    })
+  } else {
+    purrr::imap(collectors, ~ collect_source_safely(.y, .x, config))
+  }
+}
+
 collect_source_safely <- function(source_name, fun, config) {
   started <- Sys.time()
   log_info("Starting source: {source_name}")
@@ -105,4 +122,65 @@ normalize_news_tbl <- function(rows) {
     ) |>
     dplyr::filter(.data$title != "", .data$url != "") |>
     dplyr::distinct(.data$url, .keep_all = TRUE)
+}
+
+# Parsing genérico de feeds RSS/Atom -----------------------------------------
+#
+# Converte itens de um feed RSS 2.0 (<item>) ou Atom (<entry>) em linhas do
+# schema canônico. É reutilizado pelos coletores que usam canais oficiais em
+# RSS/Atom (CNPq, CAPES, IBM, AHA), evitando duplicar lógica de parsing.
+#
+# - Data: <pubDate> (RSS) ou <published> (Atom), via parse_datetime_sao().
+# - Título/URL/excerpt: <title>, <link> (ou <link rel="alternate"> em Atom),
+#   <description> (RSS) ou <summary> (Atom).
+parse_feed_entries <- function(xml_text, source, config) {
+  if (is.null(xml_text) || length(xml_text) == 0 || is.na(xml_text[[1]]) || !nzchar(trimws(xml_text[[1]]))) {
+    return(empty_news_tbl())
+  }
+
+  doc <- tryCatch(xml2::read_xml(xml_text[[1]]), error = function(e) NULL)
+  if (is.null(doc)) return(empty_news_tbl())
+
+  entries <- xml2::xml_find_all(doc, "//*[local-name()='entry']")
+  is_atom <- length(entries) > 0L
+  if (!is_atom) entries <- xml2::xml_find_all(doc, "//*[local-name()='item']")
+  if (length(entries) == 0L) return(empty_news_tbl())
+
+  purrr::map_dfr(entries, function(e) {
+    if (is_atom) {
+      title <- xml2::xml_text(xml2::xml_find_first(e, "*[local-name()='title']"))
+      link_node <- xml2::xml_find_first(e, "*[local-name()='link' and @rel='alternate']")
+      if (length(link_node) == 0L || is.na(xml2::xml_attr(link_node, "href"))) {
+        link_node <- xml2::xml_find_first(e, "*[local-name()='link']")
+      }
+      url <- xml2::xml_attr(link_node, "href")
+      date <- xml2::xml_text(xml2::xml_find_first(e, "*[local-name()='published']"))
+      summary <- xml2::xml_text(xml2::xml_find_first(e, "*[local-name()='summary']"))
+    } else {
+      title <- xml2::xml_text(xml2::xml_find_first(e, "title"))
+      url <- xml2::xml_text(xml2::xml_find_first(e, "link"))
+      # Alguns feeds RSS (ex.: gov.br Plone) omitem <link> e usam <guid> como URL.
+      if (!nzchar(url %||% "")) {
+        url <- xml2::xml_text(xml2::xml_find_first(e, "guid"))
+      }
+      date <- xml2::xml_text(xml2::xml_find_first(e, "pubDate"))
+      summary <- xml2::xml_text(xml2::xml_find_first(e, "description"))
+    }
+
+    tibble::tibble(
+      id = stable_id(source, url %||% ""),
+      source = source,
+      title = clean_text(title %||% ""),
+      url = clean_text(url %||% ""),
+      published_at = parse_datetime_sao(date %||% NA_character_, tz = config$timezone),
+      modified_at = as.POSIXct(NA),
+      date_kind = "published",
+      date_source = if (is_atom) "feed_published" else "rss_pubDate",
+      excerpt = clean_text(strip_html(summary %||% "")),
+      keywords = "",
+      raw_source = NA_character_,
+      discard_reason = NA_character_
+    )
+  }) |>
+    dplyr::filter(nzchar(.data$title), nzchar(.data$url))
 }

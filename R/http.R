@@ -154,3 +154,7 @@ stable_id <- function(source, value) {
   raw <- paste(source, value, sep = "::")
   paste0("n", substr(openssl::md5(charToRaw(raw)), 1, 16))
 }
+
+md5_hex <- function(x) {
+  paste0(openssl::md5(charToRaw(as.character(x))))
+}

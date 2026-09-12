@@ -33,7 +33,7 @@ rank_news <- function(items, config) {
       stop("DEEPSEEK_API_KEY is required outside dry run unless ALLOW_NO_DEEPSEEK=true.", call. = FALSE)
     }
     log_warn("DEEPSEEK_API_KEY missing. Using deterministic heuristic ranking.")
-    return(heuristic_rank(items))
+    return(filter_blocked_topics(heuristic_rank(items)))
   }
 
   log_info("Sending {nrow(items)} candidates to DeepSeek ranking.")
@@ -53,12 +53,17 @@ rank_news <- function(items, config) {
         "You are an editorial relevance scorer for a weekly intelligence clipping.",
         "Score only the facts presented in the supplied title and excerpt.",
         "Do not invent facts. Do not change the source.",
+        "Hard exclude (score near zero): partisan politics, elections, electoral campaigns, candidates, political parties, legislative disputes, and political scandals.",
         "Prioritize: public health, epidemiology, nursing, SUS, hospitals, vaccination, disease outbreaks, science, research, public policy, public management, education, higher education, basic education, professional education, fiscal policy, infrastructure, environment, climate, pollution, public-impact technology, AI, Rio de Janeiro, Campos dos Goytacazes, and Norte Fluminense.",
         "For J3News and Folha1, give high weight to Campos dos Goytacazes, Norte Fluminense, local administration, health, infrastructure, regional economy, and municipal policy.",
         "For IFF and UENF, give high weight to research, science, innovation, extension, graduate programs, academic opportunities, institutional decisions, public education, technology transfer, health, environment, and regional development.",
         "For MEC, give high weight to educational policy, basic and higher education programs, PNE, ENEM, FIES, PROUNI, teacher training, educational inclusion, and school infrastructure.",
         "For Ministério da Saúde, give high weight to SUS, public health policy, vaccination, disease control, primary care, specialized care, health surveillance, health funding, and health workforce.",
         "For Cofen and Coren-RJ, give high weight to nursing, professional regulation, ethical guidelines, public health nursing, health workforce policy, and professional training.",
+        "For CNPq, FAPERJ, and CAPES, give high weight to scientific research, innovation, funding, scholarships, calls for proposals (editais), graduate programs, science and technology policy, and academic opportunities.",
+        "For FAPERJ, additionally weight the Rio de Janeiro regional context.",
+        "For IBM, prioritize editorial/news content about artificial intelligence, computing, data science, quantum computing, security, cloud, digital health, and research advances — not product pages.",
+        "For AHA (American Heart Association), give high weight to cardiovascular disease, stroke, cerebrovascular health, prevention, epidemiology, public health, clinical research, scientific statements, guidelines, and research news.",
         "For BBC News and CNN Brasil, prioritize national and international facts with broad population, scientific, political, economic, environmental, or institutional impact.",
         "Strongly penalize gossip, celebrities, reality shows, astrology, routine sports, promotional content, and clickbait unless there is extraordinary public impact.",
         sep = "\n"
@@ -91,16 +96,18 @@ rank_news <- function(items, config) {
   })
 
   if (is.null(ranked)) {
-    return(heuristic_rank(items))
+    return(filter_blocked_topics(heuristic_rank(items)))
   }
 
-  items |>
-    dplyr::left_join(ranked, by = "id") |>
-    dplyr::mutate(
-      score = pmax(0, pmin(100, as.numeric(.data$score))),
-      topic = clean_text(.data$topic),
-      justification = clean_text(.data$justification)
-    )
+  filter_blocked_topics(
+    items |>
+      dplyr::left_join(ranked, by = "id") |>
+      dplyr::mutate(
+        score = pmax(0, pmin(100, as.numeric(.data$score))),
+        topic = clean_text(.data$topic),
+        justification = clean_text(.data$justification)
+      )
+  )
 }
 
 validate_ranking_output <- function(out, input_items) {
@@ -136,7 +143,15 @@ heuristic_rank <- function(items) {
     "enfermagem", "enfermeiro", "nursing", "nurse", "coren", "cofen",
     "ideb", "enem", "fies", "prouni", "pne", "educacao basica", "ensino medio",
     "ensino superior", "formacao docente", "educacao inclusiva", "ensino profissional",
-    "atencao primaria", "vigilancia", "saude mental", "saude indigena"
+    "atencao primaria", "vigilancia", "saude mental", "saude indigena",
+    "cardiovascular", "cardiaco", "coracao", "heart", "cardiology", "stroke", "avc",
+    "cerebrovascular", "prevencao", "prevention", "epidemiology", "clinical trial",
+    "guideline", "scientific statement", "blood pressure", "hypertension", "colesterol",
+    "quantum", "quantica", "cloud", "cybersecurity", "seguranca digital", "semiconductor",
+    "foundation model", "machine learning", "deep learning", "data science",
+    "pos graduacao", "pos-graduacao", "stricto sensu", "mestrado", "doutorado",
+    "bolsas", "bolsa", "edital", "chamada", "fomento", "avaliacao", "internacionalizacao",
+    "ciencia tecnologia inovacao", "desenvolvimento cientifico"
   )
   penalty_terms <- c(
     "celebridade", "bbb", "reality", "horoscopo", "famos", "futebol", "copa",
@@ -155,10 +170,10 @@ heuristic_rank <- function(items) {
     dplyr::mutate(
       score = score,
       topic = dplyr::case_when(
-        has_any_normalized_term(text, c("saude", "sus", "epidemia", "epidemiologia", "vacina", "health", "public health", "vaccine", "hospital", "disease")) ~ "saúde pública",
+        has_any_normalized_term(text, c("saude", "sus", "epidemia", "epidemiologia", "vacina", "health", "public health", "vaccine", "hospital", "disease", "cardiovascular", "cardiaco", "heart", "stroke", "avc", "cerebrovascular", "hypertension", "prevencao")) ~ "saúde pública",
         has_any_normalized_term(text, c("economia", "economico", "fiscal", "mercado", "economy", "economic")) ~ "economia",
         has_any_normalized_term(text, c("clima", "ambiente", "poluicao", "climate", "heatwave", "environment", "pollution", "emissions")) ~ "meio ambiente",
-        items$source %in% c("IFF", "UENF") | has_any_normalized_term(text, c("universidade", "instituto federal", "educacao", "ensino", "pesquisa", "extensao", "inovacao", "mestrado", "doutorado", "campus")) ~ "academia e instituições públicas",
+        items$source %in% c("IFF", "UENF", "CNPq", "FAPERJ", "CAPES") | has_any_normalized_term(text, c("universidade", "instituto federal", "educacao", "ensino", "pesquisa", "extensao", "inovacao", "mestrado", "doutorado", "campus", "pos graduacao", "bolsas", "edital", "fomento")) ~ "academia e instituições públicas",
         has_any_normalized_term(text, c("campos", "goytacazes", "norte fluminense")) ~ "Campos/Norte Fluminense",
         TRUE ~ "interesse público"
       ),
@@ -178,6 +193,15 @@ heuristic_justification <- function(source, topic, text) {
           return("Reúne prazos e oportunidades acadêmicas que podem afetar estudantes, docentes, técnicos e grupos de pesquisa.")
         }
         return("Ajuda a acompanhar decisões e movimentos institucionais de uma fonte acadêmica estratégica para o Norte Fluminense.")
+      }
+      if (source %in% c("CNPq", "FAPERJ", "CAPES")) {
+        if (has_any_normalized_term(text, c("edital", "chamada", "bolsa", "fomento", "inscricao", "mestrado", "doutorado", "avaliacao"))) {
+          return("Reúne editais, bolsas, avaliação e oportunidades de fomento que orientam pesquisadores, estudantes e instituições.")
+        }
+        if (has_any_normalized_term(text, c("pesquisa", "inovacao", "ciencia", "tecnologia", "internacionalizacao"))) {
+          return("Acompanha políticas e resultados de ciência, tecnologia e inovação, com efeito sobre a agenda de pesquisa nacional.")
+        }
+        return("Ajuda a acompanhar decisões e programas institucionais de fomento à ciência e à pós-graduação.")
       }
       if (identical(topic, "saúde pública")) {
         return("Tem relevância sanitária porque pode afetar acesso a serviços, prevenção, risco populacional ou organização da rede de saúde.")
@@ -209,20 +233,106 @@ has_any_normalized_term <- function(text, terms) {
   hits
 }
 
+# Tópicos bloqueados de forma rígida (nunca entram no clipping): política
+# partidária, eleições, candidaturas, casas legislativas e afins. Não bloqueia
+# "política pública" nem "política de saúde/educação", que são assuntos desejados.
+blocked_topic_terms <- function() {
+  c(
+    # Português — eleições e política partidária
+    "eleicao", "eleicoes", "eleitoral", "eleitorado", "pleito", "sufragio",
+    "urna", "urnas", "votacao", "voto", "votos",
+    "candidato", "candidata", "candidatura", "campanha eleitoral", "coligacao",
+    "debate eleitoral", "propaganda eleitoral", "pesquisa eleitoral",
+    "tribunal eleitoral", "justica eleitoral", "tse", "tre",
+    "partido", "partidos", "partidario", "partidaria", "filiacao",
+    "deputado", "deputada", "senador", "senadora", "vereador", "vereadora",
+    "governador", "governadora", "senado", "congresso", "camara dos deputados",
+    "assembleia legislativa", "camara municipal", "mandato",
+    # Inglês — eleições e política partidária (BBC/CNN internacionais)
+    "election", "elections", "electoral", "electorate", "ballot", "polling",
+    "candidate", "candidacy", "political party", "lawmaker", "lawmakers",
+    "senator", "senate", "congress", "parliament", "parliamentary", "legislature",
+    "governor", "primaries", "runoff", "general election",
+    "campaign trail", "white house", "downing street", "prime minister"
+  )
+}
+
+# Marca com discard_reason = "politics_or_elections" todo item cujo título,
+# resumo ou tópico trate de política partidária/eleitoral. Datas inválidas
+# continuam com o motivo original (não são reclassificadas).
+filter_blocked_topics <- function(items) {
+  if (nrow(items) == 0) return(items)
+
+  if (!"discard_reason" %in% names(items)) {
+    items <- items |> dplyr::mutate(discard_reason = NA_character_)
+  }
+
+  get_col <- function(name) {
+    if (name %in% names(items)) items[[name]] else rep("", nrow(items))
+  }
+
+  title <- dplyr::coalesce(clean_text(get_col("title")), "")
+  excerpt <- dplyr::coalesce(clean_text(get_col("excerpt")), "")
+  topic <- dplyr::coalesce(clean_text(get_col("topic")), "")
+
+  text <- normalize_title(paste(title, excerpt, topic))
+  blocked <- has_any_normalized_term(text, blocked_topic_terms())
+
+  # Tópico rotulado pelo LLM como política/eleitoral também é bloqueado.
+  # "Política educacional/de saúde/pública" (políticas públicas) NÃO é política
+  # partidária e deve continuar permitida.
+  topic_norm <- normalize_title(topic)
+  blocked_topic <- stringr::str_detect(
+    topic_norm,
+    "(^| )(eleicao|eleicoes|eleitoral|eleitorado|candidato|candidatura|partido|partidaria|partidario|votacao|voto|pleito|urna)( |$)"
+  ) | stringr::str_detect(
+    topic_norm,
+    "(^| )politica (internacional|nacional|partidaria|eleitoral|domestica|externa|de estado|governamental)( |$)"
+  )
+  blocked <- blocked | blocked_topic
+
+  reason <- dplyr::coalesce(get_col("discard_reason"), "")
+  items |>
+    dplyr::mutate(
+      discard_reason = dplyr::case_when(
+        blocked & !(reason %in% c("date_not_validated", "outside_7_day_window")) ~ "politics_or_elections",
+        TRUE ~ .data$discard_reason
+      )
+    )
+}
+
 select_for_clipping <- function(ranked, config) {
   if (nrow(ranked) == 0) return(ranked)
 
-  valid <- ranked |>
-    dplyr::filter(
-      is.na(.data$discard_reason) | .data$discard_reason == "",
-      !is.na(.data$score)
-    ) |>
+  # Reaplica o bloqueio de tópicos (política/eleições) mesmo que a deduplicação
+  # fuzzy tenha sobrescrito o motivo de descarte anterior.
+  ranked <- filter_blocked_topics(ranked)
+
+  discard <- if ("discard_reason" %in% names(ranked)) {
+    dplyr::coalesce(ranked$discard_reason, "")
+  } else {
+    rep("", nrow(ranked))
+  }
+
+  # Bloqueio rígido: política/eleições e itens sem data válida/janela nunca entram.
+  hard_blocked <- discard %in% c("politics_or_elections", "date_not_validated", "outside_7_day_window")
+
+  # Itens elegíveis para a fase protegida: qualquer item não bloqueado de forma
+  # rígida (duplicados fuzzy ainda podem "salvar" uma fonte sem outras notícias).
+  eligible <- ranked |>
+    dplyr::filter(!hard_blocked, !is.na(.data$score)) |>
+    dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at))
+
+  # Itens "válidos" para a fase de preenchimento: sem nenhum descarte.
+  valid <- eligible |>
+    dplyr::filter(is.na(.data$discard_reason) | .data$discard_reason == "") |>
     dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at))
 
   min_news_per_source <- min(config$min_news_per_source %||% 5L, config$news_per_source)
 
-  # Phase 1: guarantee min_news_per_source from EVERY source (by best score, no threshold)
-  protected <- valid |>
+  # Fase 1: garante min_news_per_source de TODA fonte que tenha itens elegíveis,
+  # independentemente do limiar editorial — assim nenhuma fonte coletada fica vazia.
+  protected <- eligible |>
     dplyr::group_by(.data$source) |>
     dplyr::arrange(dplyr::desc(.data$score), dplyr::desc(.data$published_at), .by_group = TRUE) |>
     dplyr::slice_head(n = min_news_per_source) |>

@@ -11,7 +11,12 @@ render_email_html <- function(news, status_tbl, config) {
     "Cofen" = "#0e7490",
     "MEC" = "#15803d",
     "Minist\u00e9rio da Sa\u00fade" = "#0891b2",
-    "Coren-RJ" = "#a21caf"
+    "Coren-RJ" = "#a21caf",
+    "CNPq" = "#2563eb",
+    "FAPERJ" = "#059669",
+    "CAPES" = "#7c2d12",
+    "IBM" = "#1f2937",
+    "AHA" = "#dc2626"
   )
 
   source_blocks <- purrr::map_chr(source_order(), function(source_name) {
@@ -55,7 +60,7 @@ render_email_html <- function(news, status_tbl, config) {
   })
 
   top_block <- if (nrow(top) == 0) {
-    "<p style='margin:0;color:#6b7280'>Nenhuma not\u00edcia atingiu o limiar editorial nesta execu\u00e7\u00e3o.</p>"
+    "<p style='margin:0;color:#6b7280'>Nenhuma notícia dentro dos assuntos permitidos nesta execução.</p>"
   } else {
     paste(purrr::map_chr(seq_len(nrow(top)), function(i) {
       item <- top[i, ]
@@ -118,7 +123,7 @@ source_empty_message <- function(status) {
     no_items = "Nenhum conte\u00fado encontrado nesta semana.",
     no_valid_dates = "Not\u00edcias encontradas, mas sem data de publica\u00e7\u00e3o validada.",
     no_window_items = "Nenhuma not\u00edcia recente encontrada no per\u00edodo.",
-    ok = "Fonte coletada, mas nenhuma not\u00edcia atingiu o limiar editorial.",
+    ok = "Fonte coletada, mas nenhuma not\u00edcia dentro dos assuntos permitidos (fora de pol\u00edtica/elei\u00e7\u00f5es) nesta semana.",
     "Sem not\u00edcia selecionada nesta execu\u00e7\u00e3o."
   )
 }

@@ -4,7 +4,7 @@ send_clipping <- function(html, config) {
     return(list(any_success = TRUE, dry_run = TRUE, per_recipient = tibble::tibble()))
   }
 
-  if (length(config$recipients) == 0) {
+  if (length(config$send_recipients) == 0) {
     return(list(any_success = FALSE, dry_run = FALSE, per_recipient = tibble::tibble()))
   }
 
@@ -51,7 +51,7 @@ send_clipping <- function(html, config) {
     ))
   }
 
-  results <- purrr::map_dfr(config$recipients, function(recipient) {
+  results <- purrr::map_dfr(config$send_recipients, function(recipient) {
     tryCatch({
       msg <- gmailr::gm_mime() |>
         gmailr::gm_from(config$email_from) |>
@@ -225,7 +225,7 @@ refresh_access_token <- function(client_info, refresh_token) {
 send_clipping_gmail_api <- function(html, config, access_token) {
   subject <- glue::glue("Radar semanal de not\u00edcias - {format(config$now, '%d/%m/%Y')}")
 
-  results <- purrr::map_dfr(config$recipients, function(recipient) {
+  results <- purrr::map_dfr(config$send_recipients, function(recipient) {
     tryCatch({
       msg_id <- send_email_raw(
         access_token = access_token,
@@ -245,35 +245,40 @@ send_clipping_gmail_api <- function(html, config, access_token) {
   list(any_success = any(results$status == "sent"), dry_run = FALSE, per_recipient = results)
 }
 
-send_email_raw <- function(access_token, from, to, subject, html_body) {
-  # Build RFC 2822 message
+build_raw_email <- function(from, to, subject, html_body) {
   boundary <- paste0("===============", format(Sys.time(), "%Y%m%d%H%M%S"), "==")
+
+  subject_b64 <- base64enc::base64encode(charToRaw(enc2utf8(subject)))
+  text_b64 <- base64enc::base64encode(charToRaw(enc2utf8("Este e-mail contém HTML. Abra em um cliente compatível.")))
+  html_b64 <- base64enc::base64encode(charToRaw(enc2utf8(html_body)))
 
   msg_lines <- c(
     paste0("From: ", from),
     paste0("To: ", to),
-    paste0("Subject: =?UTF-8?B?", base64enc::base64encode(charToRaw(subject)), "?="),
+    paste0("Subject: =?UTF-8?B?", subject_b64, "?="),
     "MIME-Version: 1.0",
     paste0("Content-Type: multipart/alternative; boundary=\"", boundary, "\""),
     "",
     paste0("--", boundary),
     "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: quoted-printable",
+    "Content-Transfer-Encoding: base64",
     "",
-    "Este e-mail cont=C3=A9m HTML. Abra em um cliente compat=C3=ADvel.",
-    "",
+    text_b64,
     paste0("--", boundary),
     "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: quoted-printable",
+    "Content-Transfer-Encoding: base64",
     "",
-    html_body,
-    "",
+    html_b64,
     paste0("--", boundary, "--")
   )
 
-  raw_msg <- paste(msg_lines, collapse = "\r\n")
+  paste(msg_lines, collapse = "\r\n")
+}
 
-  # Base64 URL-safe encode
+send_email_raw <- function(access_token, from, to, subject, html_body) {
+  raw_msg <- build_raw_email(from, to, subject, html_body)
+
+  # Gmail API espera base64url (URL-safe, sem padding).
   b64 <- base64enc::base64encode(charToRaw(raw_msg))
   b64_urlsafe <- gsub("\\+", "-", gsub("/", "_", b64))
   b64_urlsafe <- gsub("=+$", "", b64_urlsafe)
@@ -328,7 +333,7 @@ send_clipping_outlook <- function(html, config) {
   html_path <- tempfile("weekly-news-email-", fileext = ".html")
   writeLines(html, html_path, useBytes = TRUE)
 
-  results <- purrr::map_dfr(config$recipients, function(recipient) {
+  results <- purrr::map_dfr(config$send_recipients, function(recipient) {
     subject <- glue::glue("Radar semanal de not\u00edcias - {format(config$now, '%d/%m/%Y')}")
     command <- glue::glue(
       "& {ps_quote(script)} -To {ps_quote(recipient)} -Subject {ps_quote(as.character(subject))} -HtmlPath {ps_quote(normalizePath(html_path, winslash = '\\\\', mustWork = TRUE))} -From {ps_quote(config$email_from)}"

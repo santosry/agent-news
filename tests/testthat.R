@@ -1,6 +1,6 @@
 library(testthat)
 
-for (file in sort(list.files("R", pattern = "[.]R$", full.names = TRUE))) {
+for (file in sort(list.files("R", pattern = "[.]R$", full.names = TRUE, recursive = TRUE))) {
   source(file, local = FALSE)
 }
 

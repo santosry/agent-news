@@ -1,3 +1,20 @@
+build_audit_items <- function(all_items, ranked) {
+  all_items |>
+    dplyr::select(-dplyr::any_of(c("score", "topic", "justification", "canonical_id"))) |>
+    dplyr::left_join(
+      ranked |>
+        dplyr::select("id", "score", "topic", "justification", "canonical_id", "discard_reason"),
+      by = "id",
+      suffix = c("", "_ranked")
+    ) |>
+    dplyr::mutate(
+      score = .data$score %||% NA_real_,
+      topic = .data$topic %||% NA_character_,
+      discard_reason = dplyr::coalesce(.data$discard_reason_ranked, .data$discard_reason)
+    ) |>
+    dplyr::select(-dplyr::any_of("discard_reason_ranked"))
+}
+
 audit_rows <- function(items, run_started_at, selected_ids = character()) {
   if (nrow(items) == 0) {
     return(tibble::tibble())
@@ -54,6 +71,8 @@ write_run_report <- function(status_tbl, selected, invariants, send_result, run_
     timezone = config$timezone,
     timezone_label = config$timezone_label,
     dry_run = config$dry_run,
+    test_mode = isTRUE(config$test_mode),
+    mode = config$mode,
     window_start = format(config$window_start, "%Y-%m-%dT%H:%M:%S%z"),
     window_end = format(config$window_end, "%Y-%m-%dT%H:%M:%S%z"),
     rank_model = config$rank_model,
@@ -62,6 +81,8 @@ write_run_report <- function(status_tbl, selected, invariants, send_result, run_
     allow_no_deepseek = isTRUE(config$allow_no_deepseek),
     email_transport = config$email_transport,
     recipients = config$recipients,
+    all_recipients = config$all_recipients,
+    send_recipients = config$send_recipients,
     invalid_recipients = config$invalid_recipients,
     source_status = status_tbl,
     selected_count = nrow(selected),

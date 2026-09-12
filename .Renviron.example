@@ -3,10 +3,21 @@ NEWS_TIMEZONE_LABEL=Horário de Brasília
 DRY_RUN=true
 NEWS_LOOKBACK_DAYS=30
 
+# Modo de execução do agente: monitor | investigate | digest
+AGENT_MODE=monitor
+# Em test_mode, envia SOMENTE para ryandpaulosantos@gmail.com (nunca para a lista completa)
+AGENT_TEST_MODE=false
+AGENT_MAX_ITERATIONS=12
+AGENT_MAX_LLM_CALLS=40
+AGENT_TOOL_TIMEOUT_SECONDS=120
+# Memória persistente (JSON). Pode apontar para outro caminho, ex.: outputs/agent-memory.json
+AGENT_MEMORY_PATH=outputs/agent-memory.json
+
 DEEPSEEK_API_KEY=
 ALLOW_NO_DEEPSEEK=false
 DEEPSEEK_RANK_MODEL=deepseek-chat
 DEEPSEEK_SUMMARY_MODEL=deepseek-chat
+DEEPSEEK_PLANNER_MODEL=deepseek-chat
 DEEPSEEK_REASONING_EFFORT=low
 
 EMAIL_FROM=seu.email@exemplo.com

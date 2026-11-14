@@ -36,6 +36,27 @@ collect_source_safely <- function(source_name, fun, config) {
     }
   )
 
+  # Um coletor deve sempre devolver uma lista com `source`, `status` e `items`.
+  # Se devolver NULL/tibble (ex.: retorno antecipado indevido), registra falha
+  # explícita em vez de sumir da tabela de status do run.
+  valid_result <- is.list(result) &&
+    all(c("source", "status") %in% names(result)) &&
+    !is.null(result[["source"]]) &&
+    !is.null(result[["status"]])
+  if (!valid_result) {
+    result <- list(
+      source = source_name,
+      status = "failed",
+      items = empty_news_tbl(),
+      raw_count = 0L,
+      valid_date_count = 0L,
+      in_window_count = 0L,
+      diagnostics = "Collector returned an invalid result (expected list with source/status/items).",
+      started_at = started,
+      ended_at = Sys.time()
+    )
+  }
+
   result$started_at <- started
   result$ended_at <- Sys.time()
   result$elapsed_sec <- as.numeric(difftime(result$ended_at, result$started_at, units = "secs"))
@@ -109,6 +130,63 @@ empty_news_tbl <- function() {
     raw_source = character(),
     discard_reason = character()
   )
+}
+
+# Parsing de listagens Plone/gov.br -------------------------------------------
+#
+# O portal gov.br convive com dois layouts: o antigo "tileItem" (classe
+# tileItem + summary-view-icon) e o novo "collection-item" (h2/h3 + <time>).
+# Ambos são normalizados para o schema canônico de notícias.
+plone_listing_rows <- function(doc, source, base_url, page_url, config) {
+  articles <- rvest::html_elements(doc, xpath = "//*[contains(concat(' ', normalize-space(@class), ' '), ' tileItem ')]")
+  if (length(articles) == 0) {
+    articles <- rvest::html_elements(doc, xpath = "//*[contains(concat(' ', normalize-space(@class), ' '), ' collection-item ')]")
+  }
+  if (length(articles) == 0) return(empty_news_tbl())
+
+  purrr::map_dfr(seq_along(articles), function(i) {
+    article <- articles[[i]]
+    link_node <- rvest::html_element(article, "h2 a[href], h3 a[href]")
+    if (length(link_node) == 0) return(NULL)
+
+    href <- rvest::html_attr(link_node, "href")
+    if (is.na(href) || !nzchar(href)) return(NULL)
+
+    link <- clean_text(xml2::url_absolute(href, base_url))
+    title <- clean_text(rvest::html_text2(link_node))
+    if (!nzchar(title) || !nzchar(link)) return(NULL)
+
+    excerpt <- clean_text(rvest::html_text2(rvest::html_element(article, ".description")))
+    keywords <- clean_text(paste(rvest::html_text2(rvest::html_elements(article, ".keywords a")), collapse = ", "))
+
+    time_node <- rvest::html_element(article, "time[datetime]")
+    iso_datetime <- rvest::html_attr(time_node, "datetime")
+    if (!is.na(iso_datetime) && nzchar(iso_datetime)) {
+      published_at <- parse_datetime_sao(iso_datetime, tz = config$timezone)
+      date_source <- "html_time_datetime"
+    } else {
+      meta <- clean_text(rvest::html_text2(rvest::html_elements(article, ".summary-view-icon")))
+      date_text <- meta[stringr::str_detect(meta, "^[0-9]{2}/[0-9]{2}/[0-9]{4}$")][[1]] %||% NA_character_
+      hour_text <- meta[stringr::str_detect(meta, "^[0-9]{1,2}h[0-9]{2}$")][[1]] %||% "12h00"
+      published_at <- parse_iff_datetime(date_text, hour_text, config$timezone)
+      date_source <- "plone_summary_view_icon"
+    }
+
+    tibble::tibble(
+      id = stable_id(source, link),
+      source = source,
+      title = title,
+      url = link,
+      published_at = published_at,
+      modified_at = as.POSIXct(NA),
+      date_kind = "published",
+      date_source = date_source,
+      excerpt = excerpt,
+      keywords = keywords,
+      raw_source = page_url,
+      discard_reason = NA_character_
+    )
+  })
 }
 
 normalize_news_tbl <- function(rows) {

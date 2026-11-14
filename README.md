@@ -48,8 +48,8 @@ A tomada de decisão em saúde pública, gestão, pesquisa e políticas pública
 | BBC News | Feed RSS | RSS `pubDate` | 7 feeds temáticos oficiais |
 | CNN Brasil | Sitemap XML + HTML | `article:published_time` | Sitemap Google News |
 | Cofen | API REST WordPress | ISO 8601 (`date`) | Categoria notícias |
-| MEC | HTML Scraping | `DC.date.created` ou URL | Portal gov.br (Plone) |
-| Ministério da Saúde | HTML Scraping | `DC.date.created` ou URL | Portal gov.br (Plone) |
+| MEC | HTML Scraping | `<time datetime>` (novo layout) ou `summary-view-icon` (legado) | Portal gov.br (Plone); suporta `collection-item` e `tileItem` |
+| Ministério da Saúde | HTML Scraping | `<time datetime>` (novo layout) ou `summary-view-icon` (legado) | Portal gov.br (Plone); suporta `collection-item` e `tileItem` |
 | Coren-RJ | Feed RSS + HTML Fallback | RSS `pubDate` | Fallback para scraping HTML |
 | CNPq | Feed RSS/Atom | `pubDate`/`published` | Feed site-wide gov.br; seção de notícias é restrita |
 | FAPERJ | HTML Scraping | `DD/MM/YYYY` (arquivo de notícias) | Fonte regional do Rio de Janeiro |
@@ -783,8 +783,8 @@ Sim! Defina `ALLOW_NO_DEEPSEEK=true`. O agente usará um algoritmo heurístico p
 | BBC News | Feed inacessível | BBC pode bloquear IPs de datacenters |
 | CNN Brasil | Sitemap vazio | Reduza/aumente `CNN_MAX_PUBLIC_PAGES` |
 | Cofen | API bloqueada | WAF pode exigir User-Agent; tente com browser |
-| MEC | Página 403 | gov.br pode bloquear IPs; o coletor registra a falha |
-| Ministério da Saúde | Página 403 | Mesmo caso do MEC; tente URL alternativa `/noticias` |
+| MEC | Página 403 ou layout novo sem `tileItem` | gov.br pode bloquear IPs; o coletor cobre `collection-item` e `tileItem` e registra a falha explicitamente |
+| Ministério da Saúde | Página 403 | Mesmo caso do MEC; tenta automaticamente `/noticias` e `/ultimas-noticias` |
 | Coren-RJ | Feed vazio | Fallback automático para scraping HTML |
 
 ### Problemas Gerais

@@ -184,3 +184,53 @@ test_that("new-source items without a validated date are discarded, not silently
   expect_equal(finished$status, "no_valid_dates")
   expect_true(all(finished$items$discard_reason == "date_not_validated"))
 })
+
+test_that("gov.br Plone: novo layout collection-item é parseado com data ISO", {
+  cfg <- make_test_config()
+  html <- paste0(
+    '<html><body><div class="collection-item">',
+    '<h3><a href="/mec/pt-br/assuntos/noticias/2026/novembro/noticia-x">Notícia X</a></h3>',
+    '<p class="description">Resumo da notícia.</p>',
+    '<time datetime="2026-09-11T20:31:04-03:00">11/09/2026 20h31</time>',
+    '</div><div class="collection-item">',
+    '<h3><a href="/mec/pt-br/assuntos/noticias/2026/novembro/noticia-y">Notícia Y</a></h3>',
+    '<time datetime="2026-09-10T10:00:00-03:00">10/09/2026 10h00</time>',
+    '</div></body></html>'
+  )
+  doc <- xml2::read_html(html, encoding = "UTF-8")
+  rows <- plone_listing_rows(doc, "MEC", "https://www.gov.br", "https://www.gov.br/mec", cfg)
+
+  expect_equal(nrow(rows), 2L)
+  expect_true(all(rows$source == "MEC"))
+  expect_equal(rows$title[[1]], "Notícia X")
+  expect_equal(rows$url[[1]], "https://www.gov.br/mec/pt-br/assuntos/noticias/2026/novembro/noticia-x")
+  expect_true(all(!is.na(rows$published_at)))
+  expect_true(all(rows$date_source == "html_time_datetime"))
+})
+
+test_that("gov.br Plone: layout antigo tileItem continua funcionando", {
+  cfg <- make_test_config()
+  html <- paste0(
+    '<html><body><div class="tileItem">',
+    '<h2><a href="/mec/pt-br/assuntos/noticias/noticia-z">Notícia Z</a></h2>',
+    '<div class="description">Resumo.</div>',
+    '<span class="summary-view-icon">10/09/2026</span>',
+    '<span class="summary-view-icon">14h30</span>',
+    '</div></body></html>'
+  )
+  doc <- xml2::read_html(html, encoding = "UTF-8")
+  rows <- plone_listing_rows(doc, "MEC", "https://www.gov.br", "https://www.gov.br/mec", cfg)
+
+  expect_equal(nrow(rows), 1L)
+  expect_equal(rows$title[[1]], "Notícia Z")
+  expect_true(!is.na(rows$published_at[[1]]))
+  expect_equal(rows$date_source[[1]], "plone_summary_view_icon")
+})
+
+test_that("coletor que devolve resultado inválido é registrado como falha explícita", {
+  cfg <- make_test_config()
+  result <- collect_source_safely("MEC", function(config) tibble::tibble(), cfg)
+  expect_equal(result$status, "failed")
+  expect_match(result$diagnostics, "invalid result")
+  expect_equal(nrow(result$items), 0L)
+})
